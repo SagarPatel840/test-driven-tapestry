@@ -1,1 +1,48 @@
 project_id = "jjtmoajtxvqczsiexjyg"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+image = "supabase/gotrue:v2.167.1"
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://jjtmoajtxvqczsiexjyg.supabase.co"]
+jwt_expiry = 3600
+enable_signup = true
+enable_confirmations = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[storage]
+enabled = true
+image = "supabase/storage-api:v1.11.8"
+file_size_limit = "50MiB"
+
+[realtime]
+enabled = true
+ip_version = "ipv4"
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1:54321"
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[db]
+shadow_port = 54322
+
+[functions.swagger-to-test-cases]
+verify_jwt = false
