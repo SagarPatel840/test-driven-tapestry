@@ -535,7 +535,8 @@ export const EnhancedPerformanceTestGenerator = () => {
             duration: loadConfig.duration,
             loopCount: loadConfig.loopCount
           },
-          testPlanName: loadConfig.testPlanName
+          testPlanName: loadConfig.testPlanName,
+          aiProvider
         }
       });
 
@@ -579,11 +580,11 @@ export const EnhancedPerformanceTestGenerator = () => {
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
       <div className="flex items-center gap-2">
-        <TestTube className="h-6 w-6 text-primary" />
-        <h1 className="text-3xl font-bold">Performance Test Generator</h1>
+        <Brain className="h-6 w-6 text-primary" />
+        <h1 className="text-3xl font-bold">AI-Powered Performance Test Generator</h1>
       </div>
       <p className="text-muted-foreground">
-        Generate JMeter performance test plans from Swagger/OpenAPI specifications or HAR files with advanced AI analysis.
+        Generate intelligent JMeter performance test plans from Swagger/OpenAPI specifications or HAR files using AI-powered analysis with Google AI Studio or Azure OpenAI.
       </p>
 
       {/* Common Load Testing Configuration */}
@@ -752,6 +753,29 @@ export const EnhancedPerformanceTestGenerator = () => {
                 </div>
 
                 <div>
+                  <Label htmlFor="aiProvider">AI Provider</Label>
+                  <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select AI provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="google">
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-4 w-4" />
+                          Google AI Studio (Gemini)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="openai">
+                        <div className="flex items-center gap-2">
+                          <Zap className="h-4 w-4" />
+                          Azure OpenAI (GPT-4)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
                   <Label htmlFor="groupBy">Group Requests By</Label>
                   <Select 
                     value={swaggerConfig.groupBy} 
@@ -776,12 +800,12 @@ export const EnhancedPerformanceTestGenerator = () => {
                   {isSwaggerProcessing ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Generating...
+                      Generating with {aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}...
                     </>
                   ) : (
                     <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Generate JMeter Test Plan
+                      {aiProvider === 'google' ? <Brain className="mr-2 h-4 w-4" /> : <Zap className="mr-2 h-4 w-4" />}
+                      Generate with {aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}
                     </>
                   )}
                 </Button>
@@ -886,14 +910,37 @@ export const EnhancedPerformanceTestGenerator = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    Generate JMeter Script
+                    <Brain className="h-5 w-5" />
+                    AI-Powered Generation
                   </CardTitle>
                   <CardDescription>
-                    Process your HAR file with AI analysis
+                    Choose your AI provider and generate intelligent JMeter scripts
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="harAiProvider">AI Provider</Label>
+                    <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select AI provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="google">
+                          <div className="flex items-center gap-2">
+                            <Brain className="h-4 w-4" />
+                            Google AI Studio (Gemini)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="openai">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                            Azure OpenAI (GPT-4)
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <Button 
                     onClick={processHarFile} 
                     disabled={!harContent || isHarProcessing}
@@ -903,12 +950,12 @@ export const EnhancedPerformanceTestGenerator = () => {
                     {isHarProcessing ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Processing with AI...
+                        Processing with {aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}...
                       </>
                     ) : (
                       <>
-                        <Zap className="h-4 w-4 mr-2" />
-                        Generate JMeter Script
+                        {aiProvider === 'google' ? <Brain className="mr-2 h-4 w-4" /> : <Zap className="mr-2 h-4 w-4" />}
+                        Generate with {aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}
                       </>
                     )}
                   </Button>
@@ -918,7 +965,7 @@ export const EnhancedPerformanceTestGenerator = () => {
                       <Progress value={harProgress} className="w-full" />
                       <p className="text-sm text-muted-foreground text-center">
                         {harProgress < 30 ? "Analyzing HAR file..." :
-                         harProgress < 60 ? "Running AI analysis..." :
+                         harProgress < 60 ? `Running ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'} analysis...` :
                          harProgress < 90 ? "Generating JMeter XML..." :
                          "Finalizing..."}
                       </p>
