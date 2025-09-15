@@ -46,7 +46,7 @@ serve(async (req) => {
   }
 
   try {
-    const { harContent, loadConfig, testPlanName = "HAR Performance Test" } = await req.json();
+    const { harContent, loadConfig, testPlanName = "HAR Performance Test", aiProvider = 'openai' } = await req.json();
     
     console.log('Processing HAR file with OpenAI...');
     
@@ -85,29 +85,83 @@ serve(async (req) => {
     }
     `;
 
-    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
-        messages: [
-          { role: 'system', content: 'You are an expert performance testing engineer. Analyze HAR files and provide intelligent insights for JMeter test creation.' },
-          { role: 'user', content: analysisPrompt }
-        ],
-        max_completion_tokens: 2000,
-      }),
-    });
+    let aiAnalysisResponse;
+    
+    if (aiProvider === 'google') {
+      const googleAIApiKey = Deno.env.get('GOOGLE_AI_API_KEY');
+      if (!googleAIApiKey) {
+        throw new Error("Google AI API key not configured");
+      }
+      
+      aiAnalysisResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleAIApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: analysisPrompt
+            }]
+          }]
+        }),
+      });
+    } else {
+      // OpenAI (default)
+      if (!openAIApiKey) {
+        throw new Error("OpenAI API key not configured");
+      }
+      
+      aiAnalysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: aiProvider === 'openai' ? 'gpt-5-2025-08-07' : 'gpt-4o',
+          messages: [
+            { role: 'system', content: 'You are an expert performance testing engineer. Analyze HAR files and provide intelligent insights for JMeter test creation.' },
+            { role: 'user', content: analysisPrompt }
+          ],
+          max_completion_tokens: 2000,
+        }),
+      });
+    }
 
     let analysis: any = {};
     try {
-      const analysisData = await analysisResponse.json();
-      console.log('OpenAI Analysis Response:', analysisData);
-      analysis = JSON.parse(analysisData.choices[0].message.content);
+      if (!aiAnalysisResponse.ok) {
+        const errorText = await aiAnalysisResponse.text();
+        console.error(`${aiProvider} API error:`, errorText);
+        throw new Error(`${aiProvider} API error: ${aiAnalysisResponse.statusText}`);
+      }
+
+      const analysisData = await aiAnalysisResponse.json();
+      console.log(`${aiProvider} Analysis Response:`, analysisData);
+      
+      if (aiProvider === 'google') {
+        if (analysisData.candidates?.[0]?.content?.parts?.[0]?.text) {
+          const aiText = analysisData.candidates[0].content.parts[0].text;
+          const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            analysis = JSON.parse(jsonMatch[0]);
+          }
+        }
+      } else {
+        // OpenAI
+        if (analysisData.choices?.[0]?.message?.content) {
+          const aiText = analysisData.choices[0].message.content;
+          const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            analysis = JSON.parse(jsonMatch[0]);
+          } else {
+            analysis = JSON.parse(aiText);
+          }
+        }
+      }
     } catch (error) {
-      console.error('Error parsing OpenAI analysis:', error);
+      console.error(`Error parsing ${aiProvider} analysis:`, error);
       // Fallback to basic analysis
       analysis = {
         correlationFields: ["JSESSIONID", "token", "csrf"],
