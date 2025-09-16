@@ -720,10 +720,10 @@ export const AdvancedAPITestGenerator = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-<div className="border rounded-lg">
-  <ScrollArea className="h-96">
-    <div className="min-w-full">
-      <table className="w-full text-sm border-collapse border border-border">
+<div className="border rounded-lg overflow-hidden">
+  <ScrollArea className="h-96 w-full">
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm border-collapse border border-border">
         <thead className="bg-muted">
           <tr>
             <th className="border border-border p-2 text-left">Test ID</th>
