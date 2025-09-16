@@ -261,9 +261,9 @@ export const SwaggerTestGenerator = () => {
               </TabsList>
 
               <TabsContent value="csv" className="mt-4">
-                <div className="border rounded-lg">
-                  <ScrollArea className="h-96">
-                    <Table>
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="h-96 w-full overflow-auto">
+                    <Table className="table-fixed">
                       <TableHeader>
                         <TableRow>
                           {testCases?.[0]?.map((header, index) => (
@@ -283,7 +283,7 @@ export const SwaggerTestGenerator = () => {
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
+                  </div>
                 </div>
               </TabsContent>
 
