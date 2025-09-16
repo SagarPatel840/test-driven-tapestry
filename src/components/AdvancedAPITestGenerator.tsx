@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Upload, Target, FileJson, AlertTriangle, CheckCircle, Brain, Settings, TestTube } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import * as yaml from "js-yaml";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Endpoint {
   path: string;
@@ -719,57 +720,61 @@ export const AdvancedAPITestGenerator = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse border border-border">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="border border-border p-2 text-left">Test ID</th>
-                      <th className="border border-border p-2 text-left">Module</th>
-                      <th className="border border-border p-2 text-left">Method</th>
-                      <th className="border border-border p-2 text-left">Description</th>
-                      <th className="border border-border p-2 text-left">Auth</th>
-                      <th className="border border-border p-2 text-left">Roles</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {testCases.slice(0, 10).map((testCase, index) => (
-                      <tr key={index} className="hover:bg-muted/50">
-                        <td className="border border-border p-2 font-mono text-xs">{testCase.testCaseId}</td>
-                        <td className="border border-border p-2">{testCase.moduleName}</td>
-                        <td className="border border-border p-2">
-                          <Badge variant={testCase.method === 'GET' ? 'secondary' : 'default'} className="text-xs">
-                            {testCase.method}
-                          </Badge>
-                        </td>
-                        <td className="border border-border p-2 max-w-xs truncate">{testCase.description}</td>
-                        <td className="border border-border p-2 text-center">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            testCase.token === 'Yes' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                          }`}>
-                            {testCase.token}
-                          </span>
-                        </td>
-                        <td className="border border-border p-2 text-center">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            testCase.roles === 'Yes' 
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                          }`}>
-                            {testCase.roles}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {testCases.length > 10 && (
-                  <div className="text-center text-sm text-muted-foreground py-2">
-                    ... and {testCases.length - 10} more test cases
-                  </div>
-                )}
-              </div>
+<div className="border rounded-lg">
+  <ScrollArea className="h-96">
+    <div className="min-w-full">
+      <table className="w-full text-sm border-collapse border border-border">
+        <thead className="bg-muted">
+          <tr>
+            <th className="border border-border p-2 text-left">Test ID</th>
+            <th className="border border-border p-2 text-left">Module</th>
+            <th className="border border-border p-2 text-left">Method</th>
+            <th className="border border-border p-2 text-left">Description</th>
+            <th className="border border-border p-2 text-left">Auth</th>
+            <th className="border border-border p-2 text-left">Roles</th>
+          </tr>
+        </thead>
+        <tbody>
+          {testCases.slice(0, 10).map((testCase, index) => (
+            <tr key={index} className="hover:bg-muted/50">
+              <td className="border border-border p-2 font-mono text-xs">{testCase.testCaseId}</td>
+              <td className="border border-border p-2">{testCase.moduleName}</td>
+              <td className="border border-border p-2">
+                <Badge variant={testCase.method === 'GET' ? 'secondary' : 'default'} className="text-xs">
+                  {testCase.method}
+                </Badge>
+              </td>
+              <td className="border border-border p-2 max-w-xs truncate">{testCase.description}</td>
+              <td className="border border-border p-2 text-center">
+                <span className={`px-2 py-1 rounded text-xs ${
+                  testCase.token === 'Yes' 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                }`}>
+                  {testCase.token}
+                </span>
+              </td>
+              <td className="border border-border p-2 text-center">
+                <span className={`px-2 py-1 rounded text-xs ${
+                  testCase.roles === 'Yes' 
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                }`}>
+                  {testCase.roles}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {testCases.length > 10 && (
+        <div className="text-center text-sm text-muted-foreground py-2">
+          ... and {testCases.length - 10} more test cases
+        </div>
+      )}
+    </div>
+  </ScrollArea>
+</div>
             </CardContent>
           </Card>
         </>

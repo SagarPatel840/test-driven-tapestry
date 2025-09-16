@@ -84,6 +84,90 @@ export type Database = {
           },
         ]
       }
+      contact_submissions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          subject: string | null
+          website_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          subject?: string | null
+          website_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          subject?: string | null
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_submissions_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_submissions_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_reports: {
+        Row: {
+          ai_provider: string
+          created_at: string
+          created_by: string
+          csv_files_metadata: Json | null
+          id: string
+          project_id: string
+          report_content: string
+          report_name: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_provider: string
+          created_at?: string
+          created_by: string
+          csv_files_metadata?: Json | null
+          id?: string
+          project_id: string
+          report_content: string
+          report_name: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_provider?: string
+          created_at?: string
+          created_by?: string
+          csv_files_metadata?: Json | null
+          id?: string
+          project_id?: string
+          report_content?: string
+          report_name?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -305,11 +389,301 @@ export type Database = {
           },
         ]
       }
+      website_gallery: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          id: string
+          image_url: string
+          order_index: number | null
+          website_id: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          order_index?: number | null
+          website_id: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          order_index?: number | null
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_gallery_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_gallery_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      website_services: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon_name: string | null
+          id: string
+          title: string
+          website_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon_name?: string | null
+          id?: string
+          title: string
+          website_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon_name?: string | null
+          id?: string
+          title?: string
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_services_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_services_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      website_translations: {
+        Row: {
+          content_key: string
+          content_value: string
+          created_at: string
+          id: string
+          language_code: string
+          updated_at: string
+          website_id: string
+        }
+        Insert: {
+          content_key: string
+          content_value: string
+          created_at?: string
+          id?: string
+          language_code: string
+          updated_at?: string
+          website_id: string
+        }
+        Update: {
+          content_key?: string
+          content_value?: string
+          created_at?: string
+          id?: string
+          language_code?: string
+          updated_at?: string
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_translations_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_translations_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "websites_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      websites: {
+        Row: {
+          about_content: string | null
+          about_title: string | null
+          banner_url: string | null
+          contact_address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
+          slug: string
+          social_facebook: string | null
+          social_instagram: string | null
+          social_linkedin: string | null
+          social_twitter: string | null
+          theme_accent_color: string | null
+          theme_font_family: string | null
+          theme_primary_color: string | null
+          theme_secondary_color: string | null
+          updated_at: string
+        }
+        Insert: {
+          about_content?: string | null
+          about_title?: string | null
+          banner_url?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug: string
+          social_facebook?: string | null
+          social_instagram?: string | null
+          social_linkedin?: string | null
+          social_twitter?: string | null
+          theme_accent_color?: string | null
+          theme_font_family?: string | null
+          theme_primary_color?: string | null
+          theme_secondary_color?: string | null
+          updated_at?: string
+        }
+        Update: {
+          about_content?: string | null
+          about_title?: string | null
+          banner_url?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug?: string
+          social_facebook?: string | null
+          social_instagram?: string | null
+          social_linkedin?: string | null
+          social_twitter?: string | null
+          theme_accent_color?: string | null
+          theme_font_family?: string | null
+          theme_primary_color?: string | null
+          theme_secondary_color?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      websites_public: {
+        Row: {
+          about_content: string | null
+          about_title: string | null
+          banner_url: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          logo_url: string | null
+          name: string | null
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
+          slug: string | null
+          social_facebook: string | null
+          social_instagram: string | null
+          social_linkedin: string | null
+          social_twitter: string | null
+          theme_accent_color: string | null
+          theme_font_family: string | null
+          theme_primary_color: string | null
+          theme_secondary_color: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          about_content?: string | null
+          about_title?: string | null
+          banner_url?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string | null
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug?: string | null
+          social_facebook?: string | null
+          social_instagram?: string | null
+          social_linkedin?: string | null
+          social_twitter?: string | null
+          theme_accent_color?: string | null
+          theme_font_family?: string | null
+          theme_primary_color?: string | null
+          theme_secondary_color?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          about_content?: string | null
+          about_title?: string | null
+          banner_url?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string | null
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug?: string | null
+          social_facebook?: string | null
+          social_instagram?: string | null
+          social_linkedin?: string | null
+          social_twitter?: string | null
+          theme_accent_color?: string | null
+          theme_font_family?: string | null
+          theme_primary_color?: string | null
+          theme_secondary_color?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      get_website_contact_info: {
+        Args: { website_id: string }
+        Returns: {
+          contact_address: string
+          contact_email: string
+          contact_phone: string
+          id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

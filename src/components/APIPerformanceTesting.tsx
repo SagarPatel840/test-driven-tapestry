@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Download, FileText, Settings, Zap, TestTube } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import * as yaml from "js-yaml";
 
 type GeneratorType = 'api-test' | 'jmx-file';
@@ -1508,12 +1509,16 @@ ${op.method !== 'GET' ? '```json\n{\n  "sample": "test data"\n}\n```' : 'No body
             {testCases && (
               <div>
                 <Label>Generated Test Cases</Label>
-                <Textarea
-                  value={testCases}
-                  readOnly
-                  rows={15}
-                  className="font-mono text-sm mt-1"
-                />
+                <div className="mt-1 border rounded-md">
+                  <ScrollArea className="h-96">
+                    <Textarea
+                      value={testCases}
+                      readOnly
+                      className="font-mono text-sm border-0 resize-none"
+                      style={{ minHeight: 'auto' }}
+                    />
+                  </ScrollArea>
+                </div>
               </div>
             )}
           </CardContent>

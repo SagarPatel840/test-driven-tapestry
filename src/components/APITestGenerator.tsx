@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, Upload, Target, FileJson, AlertTriangle, CheckCircle, Brain, Settings, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -793,19 +794,21 @@ export const APITestGenerator = () => {
               
               <TabsContent value="endpoints" className="mt-4">
                 {endpoints.length > 0 ? (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {endpoints.map((endpoint, index) => (
-                      <div key={index} className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{endpoint.method}</Badge>
-                          <code className="text-sm font-mono">{endpoint.path}</code>
+                  <ScrollArea className="h-96">
+                    <div className="space-y-2">
+                      {endpoints.map((endpoint, index) => (
+                        <div key={index} className="p-3 border rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{endpoint.method}</Badge>
+                            <code className="text-sm font-mono">{endpoint.path}</code>
+                          </div>
+                          {endpoint.summary && (
+                            <p className="text-sm text-muted-foreground mt-1">{endpoint.summary}</p>
+                          )}
                         </div>
-                        {endpoint.summary && (
-                          <p className="text-sm text-muted-foreground mt-1">{endpoint.summary}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
                     <Target className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -816,20 +819,22 @@ export const APITestGenerator = () => {
               
               <TabsContent value="tests" className="mt-4">
                 {testCases.length > 0 ? (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {testCases.map((testCase, index) => (
-                      <div key={index} className="p-3 border rounded-lg space-y-1">
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-medium text-sm">{testCase.testCase}</h4>
-                          <Badge variant="outline">{testCase.type}</Badge>
+                  <ScrollArea className="h-96">
+                    <div className="space-y-2">
+                      {testCases.map((testCase, index) => (
+                        <div key={index} className="p-3 border rounded-lg space-y-1">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-medium text-sm">{testCase.testCase}</h4>
+                            <Badge variant="outline">{testCase.type}</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-mono bg-muted px-1 rounded">{testCase.method}</span> {testCase.endpoint}
+                            <span className="ml-2">→ {testCase.expectedStatusCode}</span>
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          <span className="font-mono bg-muted px-1 rounded">{testCase.method}</span> {testCase.endpoint}
-                          <span className="ml-2">→ {testCase.expectedStatusCode}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
                     <CheckCircle className="mx-auto h-12 w-12 mb-4 opacity-50" />
