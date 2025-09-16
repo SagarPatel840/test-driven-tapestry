@@ -267,7 +267,7 @@ export const SwaggerTestGenerator = () => {
                       <TableHeader>
                         <TableRow>
                           {testCases?.[0]?.map((header, index) => (
-                            <TableHead key={index}>{header}</TableHead>
+                            <TableHead key={index} className="whitespace-nowrap">{header}</TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
@@ -275,7 +275,7 @@ export const SwaggerTestGenerator = () => {
                         {testCases?.slice(1).map((row, rowIndex) => (
                           <TableRow key={rowIndex}>
                             {row.map((cell, cellIndex) => (
-                              <TableCell key={cellIndex} className="max-w-xs truncate">
+                              <TableCell key={cellIndex} className="max-w-xs truncate whitespace-nowrap">
                                 {cell}
                               </TableCell>
                             ))}
