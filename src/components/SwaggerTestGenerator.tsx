@@ -261,13 +261,13 @@ export const SwaggerTestGenerator = () => {
               </TabsList>
 
               <TabsContent value="csv" className="mt-4">
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="h-96 w-full overflow-x-auto overflow-y-auto">
-                    <Table className="min-w-max">
+                <div className="border rounded-lg">
+                  <ScrollArea className="h-96">
+                    <Table>
                       <TableHeader>
                         <TableRow>
                           {testCases?.[0]?.map((header, index) => (
-                            <TableHead key={index} className="whitespace-nowrap">{header}</TableHead>
+                            <TableHead key={index}>{header}</TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
@@ -275,7 +275,7 @@ export const SwaggerTestGenerator = () => {
                         {testCases?.slice(1).map((row, rowIndex) => (
                           <TableRow key={rowIndex}>
                             {row.map((cell, cellIndex) => (
-                              <TableCell key={cellIndex} className="max-w-xs truncate whitespace-nowrap">
+                              <TableCell key={cellIndex} className="max-w-xs truncate">
                                 {cell}
                               </TableCell>
                             ))}
@@ -283,7 +283,7 @@ export const SwaggerTestGenerator = () => {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </ScrollArea>
                 </div>
               </TabsContent>
 

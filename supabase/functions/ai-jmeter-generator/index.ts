@@ -72,48 +72,66 @@ serve(async (req) => {
 
     console.log(`Found ${apiInfo.methods.length} API endpoints to analyze`);
 
-    // Generate AI analysis prompt
-    const analysisPrompt = `
-    Analyze the following OpenAPI/Swagger specification and provide intelligent insights for JMeter performance testing:
+    // Generate JMX generation prompt
+    const jmxPrompt = `
+You are an expert in JMeter test plan generation.  
+Your task is to create a complete Apache JMeter (.jmx) file based on the provided Swagger (OpenAPI) specification.  
 
-    API Information:
-    - Title: ${apiInfo.title}
-    - Version: ${apiInfo.version}
-    - Description: ${apiInfo.description}
-    - Base URL: ${apiInfo.baseUrl}
-    - Total Endpoints: ${apiInfo.endpoints}
+### Requirements:  
+1. Parse the Swagger file to identify:  
+   - All endpoints (paths + methods)  
+   - Request parameters (path, query, headers)  
+   - Request bodies (schemas, fields, data types)  
+   - Authentication requirements  
 
-    Sample Endpoints:
-    ${apiInfo.methods.slice(0, 10).map(ep => `${ep.method} ${ep.path} - ${ep.summary}`).join('\n')}
+2. Create a JMeter Test Plan (.jmx) with the following:  
+   - Thread Group with configurable threads (${loadConfig.threadCount}), ramp-up (${loadConfig.rampUpTime}s), and loop count (${loadConfig.loopCount}).  
+   - HTTP Request Samplers for every endpoint in Swagger.  
+   - Group Samplers by API tag or path for better readability.  
+   - Add \`HTTP Header Manager\` with required headers such as \`Content-Type: application/json\`, \`Authorization\`, etc.  
+   - Add \`CSV Data Set Config\` to parameterize dynamic values like user IDs, emails, or tokens.  
+   - For request bodies, insert variables (e.g., \`\${variableName}\`) instead of hardcoded values.  
+   - Add realistic sample test data for variables based on Swagger schema (strings, numbers, booleans, arrays).  
 
-    Load Test Configuration:
-    - Threads: ${loadConfig.threadCount}
-    - Ramp-up: ${loadConfig.rampUpTime}s
-    - Duration: ${loadConfig.duration}s
-    - Loops: ${loadConfig.loopCount}
+3. Enhancements:  
+   - Automatically handle path parameters with variables.  
+   - Insert default test data where the Swagger schema does not provide examples.  
+   - Add \`JSON Extractor\` or \`Regular Expression Extractor\` for correlation of response values (e.g., auth token).  
+   - Ensure the JMX is well-formed XML and can be directly opened in JMeter without errors.  
 
-    Please provide:
-    1. Suggested performance test scenarios based on the API endpoints
-    2. Critical performance bottlenecks to watch for
-    3. Recommended assertions and thresholds
-    4. Load test strategy recommendations
-    5. Potential correlation requirements
+### API Information:
+- Title: ${apiInfo.title}
+- Version: ${apiInfo.version}
+- Description: ${apiInfo.description}
+- Base URL: ${apiInfo.baseUrl}
+- Total Endpoints: ${apiInfo.endpoints}
 
-    Respond in JSON format:
-    {
-      "scenarios": [{"name": "Login Flow", "description": "Test user authentication endpoints", "priority": "high"}],
-      "bottlenecks": ["Database queries", "Authentication overhead"],
-      "assertions": [{"type": "responseTime", "threshold": 2000}, {"type": "statusCode", "values": [200, 201]}],
-      "strategy": "Start with baseline load, gradually increase to find breaking point",
-      "correlations": ["authToken", "sessionId", "csrf"]
-    }
+### Load Test Configuration:
+- Threads: ${loadConfig.threadCount}
+- Ramp-up: ${loadConfig.rampUpTime}s
+- Duration: ${loadConfig.duration}s
+- Loops: ${loadConfig.loopCount}
+
+### Sample Endpoints:
+${apiInfo.methods.slice(0, 10).map(ep => `${ep.method} ${ep.path} - ${ep.summary}`).join('\n')}
+
+### Input Swagger/OpenAPI specification:
+${JSON.stringify(swaggerSpec, null, 2)}
+
+### Output:  
+- Provide the final JMX file content as valid XML inside a code block.  
+- Do not summarize, only return the JMX file.  
+- Ensure all nodes (\`TestPlan\`, \`ThreadGroup\`, \`HTTPSamplerProxy\`, etc.) follow correct JMeter XML structure.  
+
+### Task:  
+Generate the complete JMX file according to the above rules.
     `;
 
-    let aiAnalysis: any = {};
+    let jmeterXmlFromAI = "";
 
-    // Call AI provider
+    // Call AI provider to generate JMeter XML
     if (aiProvider === 'google' && googleAIApiKey) {
-      console.log('Calling Google AI Studio...');
+      console.log('Calling Google AI Studio for JMX generation...');
       try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleAIApiKey}`, {
           method: 'POST',
@@ -123,7 +141,7 @@ serve(async (req) => {
           body: JSON.stringify({
             contents: [{
               parts: [{
-                text: analysisPrompt
+                text: jmxPrompt
               }]
             }]
           }),
@@ -139,15 +157,13 @@ serve(async (req) => {
         console.log('Google AI Response received');
         
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          try {
-            const aiText = data.candidates[0].content.parts[0].text;
-            // Extract JSON from the response (remove markdown formatting if present)
-            const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              aiAnalysis = JSON.parse(jsonMatch[0]);
-            }
-          } catch (error) {
-            console.error('Error parsing Google AI response:', error);
+          const aiText = data.candidates[0].content.parts[0].text;
+          // Extract XML content from code blocks if present
+          const xmlMatch = aiText.match(/```(?:xml)?\s*([\s\S]*?)\s*```/) || aiText.match(/<\?xml[\s\S]*<\/jmeterTestPlan>/);
+          if (xmlMatch) {
+            jmeterXmlFromAI = xmlMatch[1] || xmlMatch[0];
+          } else {
+            jmeterXmlFromAI = aiText;
           }
         }
       } catch (error) {
@@ -155,7 +171,7 @@ serve(async (req) => {
         // Continue with fallback
       }
     } else if (aiProvider === 'openai' && openAIApiKey) {
-      console.log('Calling Azure OpenAI...');
+      console.log('Calling OpenAI for JMX generation...');
       try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -166,10 +182,10 @@ serve(async (req) => {
           body: JSON.stringify({
             model: 'gpt-5-2025-08-07',
             messages: [
-              { role: 'system', content: 'You are an expert performance testing engineer. Analyze APIs and provide intelligent insights for JMeter performance testing.' },
-              { role: 'user', content: analysisPrompt }
+              { role: 'system', content: 'You are an expert JMeter test plan generator. Generate only valid JMeter XML files based on OpenAPI/Swagger specifications.' },
+              { role: 'user', content: jmxPrompt }
             ],
-            max_completion_tokens: 2000,
+            max_completion_tokens: 8000,
           }),
         });
 
@@ -182,15 +198,13 @@ serve(async (req) => {
         const data = await response.json();
         console.log('OpenAI Response received');
         
-        try {
-          const aiText = data.choices[0].message.content;
-          // Extract JSON from the response
-          const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            aiAnalysis = JSON.parse(jsonMatch[0]);
-          }
-        } catch (error) {
-          console.error('Error parsing OpenAI response:', error);
+        const aiText = data.choices[0].message.content;
+        // Extract XML content from code blocks if present
+        const xmlMatch = aiText.match(/```(?:xml)?\s*([\s\S]*?)\s*```/) || aiText.match(/<\?xml[\s\S]*<\/jmeterTestPlan>/);
+        if (xmlMatch) {
+          jmeterXmlFromAI = xmlMatch[1] || xmlMatch[0];
+        } else {
+          jmeterXmlFromAI = aiText;
         }
       } catch (error) {
         console.error('OpenAI API call failed:', error);
@@ -198,37 +212,34 @@ serve(async (req) => {
       }
     }
 
-    // Fallback analysis if AI fails or no API key
-    if (!aiAnalysis.scenarios) {
-      console.log('Using fallback AI analysis');
-      aiAnalysis = {
-        scenarios: [
-          { name: "API Load Test", description: "Basic load test for all endpoints", priority: "high" },
-          { name: "Spike Test", description: "Test API under sudden load spikes", priority: "medium" }
-        ],
+    // Use AI-generated JMeter XML if available, otherwise use fallback generation
+    let finalJmeterXml: string;
+    
+    if (jmeterXmlFromAI && jmeterXmlFromAI.includes('<jmeterTestPlan')) {
+      console.log('Using AI-generated JMeter XML');
+      finalJmeterXml = jmeterXmlFromAI;
+    } else {
+      console.log('Using fallback JMeter XML generation');
+      // Fallback: generate basic JMeter XML locally
+      finalJmeterXml = generateJMeterXML(swaggerSpec, loadConfig, { 
+        scenarios: [{ name: "API Load Test", description: "Basic load test for all endpoints", priority: "high" }],
         bottlenecks: ["Response time", "Throughput", "Error rate"],
-        assertions: [
-          { type: "responseTime", threshold: 5000 },
-          { type: "statusCode", values: [200, 201, 202, 204] }
-        ],
+        assertions: [{ type: "responseTime", threshold: 5000 }, { type: "statusCode", values: [200, 201, 202, 204] }],
         strategy: "Gradual load increase with monitoring",
         correlations: ["token", "sessionId"]
-      };
+      });
     }
 
-    // Generate JMeter XML
-    const jmeterXml = generateJMeterXML(swaggerSpec, loadConfig, aiAnalysis);
-
-    console.log('JMeter XML generated successfully');
+    console.log('JMeter XML finalized successfully');
 
     return new Response(JSON.stringify({
       success: true,
-      jmeterXml,
-      analysis: aiAnalysis,
+      jmeterXml: finalJmeterXml,
       metadata: {
-        provider: aiProvider === 'google' ? 'Google AI Studio' : 'Azure OpenAI',
+        provider: aiProvider === 'google' ? 'Google AI Studio' : 'OpenAI',
         endpoints: apiInfo.methods.length,
-        threadGroups: aiAnalysis.scenarios?.length || 1
+        generatedByAI: jmeterXmlFromAI && jmeterXmlFromAI.includes('<jmeterTestPlan'),
+        testPlanName: loadConfig.testPlanName
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

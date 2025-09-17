@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Download, Zap, FileText, Settings, BarChart3, CheckCircle, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +19,17 @@ interface LoadConfig {
   rampUpTime: number;
   duration: number;
   loopCount: number;
+  responseTimeThreshold: number;
+  throughputThreshold: number;
+  errorRateThreshold: number;
+  connectionTimeout: number;
+  responseTimeout: number;
+  followRedirects: boolean;
+  useKeepAlive: boolean;
+  enableReporting: boolean;
+  addAssertions: boolean;
+  addCorrelation: boolean;
+  generateCsvConfig: boolean;
 }
 
 interface Analysis {
@@ -49,8 +62,20 @@ export const HarToJMeter = () => {
     threadCount: 10,
     rampUpTime: 60,
     duration: 300,
-    loopCount: 1
+    loopCount: 1,
+    responseTimeThreshold: 5000,
+    throughputThreshold: 100,
+    errorRateThreshold: 5,
+    connectionTimeout: 10000,
+    responseTimeout: 30000,
+    followRedirects: true,
+    useKeepAlive: true,
+    enableReporting: true,
+    addAssertions: true,
+    addCorrelation: true,
+    generateCsvConfig: false
   });
+  const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const { toast } = useToast();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,7 +163,8 @@ export const HarToJMeter = () => {
         body: {
           harContent,
           loadConfig,
-          testPlanName
+          testPlanName,
+          aiProvider
         }
       });
 
@@ -260,13 +286,14 @@ export const HarToJMeter = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="threadCount">Thread Count</Label>
+                  <Label htmlFor="threadCount">Thread Count (Virtual Users)</Label>
                   <Input
                     id="threadCount"
                     type="number"
                     value={loadConfig.threadCount}
                     onChange={(e) => setLoadConfig(prev => ({ ...prev, threadCount: parseInt(e.target.value) || 1 }))}
                     min="1"
+                    max="1000"
                   />
                 </div>
                 <div>
@@ -280,7 +307,7 @@ export const HarToJMeter = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="duration">Duration (s)</Label>
+                  <Label htmlFor="duration">Test Duration (s)</Label>
                   <Input
                     id="duration"
                     type="number"
@@ -301,6 +328,141 @@ export const HarToJMeter = () => {
                 </div>
               </div>
 
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Performance Thresholds</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label htmlFor="responseTimeThreshold">Response Time (ms)</Label>
+                    <Input
+                      id="responseTimeThreshold"
+                      type="number"
+                      value={loadConfig.responseTimeThreshold}
+                      onChange={(e) => setLoadConfig(prev => ({ ...prev, responseTimeThreshold: parseInt(e.target.value) || 1000 }))}
+                      min="100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="throughputThreshold">Throughput (req/sec)</Label>
+                    <Input
+                      id="throughputThreshold"
+                      type="number"
+                      value={loadConfig.throughputThreshold}
+                      onChange={(e) => setLoadConfig(prev => ({ ...prev, throughputThreshold: parseInt(e.target.value) || 1 }))}
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="errorRateThreshold">Error Rate (%)</Label>
+                    <Input
+                      id="errorRateThreshold"
+                      type="number"
+                      value={loadConfig.errorRateThreshold}
+                      onChange={(e) => setLoadConfig(prev => ({ ...prev, errorRateThreshold: parseInt(e.target.value) || 1 }))}
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Connection Settings</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="connectionTimeout">Connection Timeout (ms)</Label>
+                    <Input
+                      id="connectionTimeout"
+                      type="number"
+                      value={loadConfig.connectionTimeout}
+                      onChange={(e) => setLoadConfig(prev => ({ ...prev, connectionTimeout: parseInt(e.target.value) || 1000 }))}
+                      min="1000"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="responseTimeout">Response Timeout (ms)</Label>
+                    <Input
+                      id="responseTimeout"
+                      type="number"
+                      value={loadConfig.responseTimeout}
+                      onChange={(e) => setLoadConfig(prev => ({ ...prev, responseTimeout: parseInt(e.target.value) || 1000 }))}
+                      min="1000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">JMeter Configuration</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="addAssertions"
+                      checked={loadConfig.addAssertions}
+                      onCheckedChange={(checked) => setLoadConfig(prev => ({ ...prev, addAssertions: checked }))}
+                    />
+                    <Label htmlFor="addAssertions">Add Response Assertions</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="addCorrelation"
+                      checked={loadConfig.addCorrelation}
+                      onCheckedChange={(checked) => setLoadConfig(prev => ({ ...prev, addCorrelation: checked }))}
+                    />
+                    <Label htmlFor="addCorrelation">Enable Dynamic Correlation</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="generateCsvConfig"
+                      checked={loadConfig.generateCsvConfig}
+                      onCheckedChange={(checked) => setLoadConfig(prev => ({ ...prev, generateCsvConfig: checked }))}
+                    />
+                    <Label htmlFor="generateCsvConfig">Generate CSV Data Configuration</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="followRedirects"
+                      checked={loadConfig.followRedirects}
+                      onCheckedChange={(checked) => setLoadConfig(prev => ({ ...prev, followRedirects: checked }))}
+                    />
+                    <Label htmlFor="followRedirects">Follow Redirects</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="useKeepAlive"
+                      checked={loadConfig.useKeepAlive}
+                      onCheckedChange={(checked) => setLoadConfig(prev => ({ ...prev, useKeepAlive: checked }))}
+                    />
+                    <Label htmlFor="useKeepAlive">Use Keep-Alive</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="enableReporting"
+                      checked={loadConfig.enableReporting}
+                      onCheckedChange={(checked) => setLoadConfig(prev => ({ ...prev, enableReporting: checked }))}
+                    />
+                    <Label htmlFor="enableReporting">Enable Detailed Reporting</Label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="aiProvider">AI Provider</Label>
+                <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="google">Google AI (Gemini)</SelectItem>
+                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button 
                 onClick={processHarFile} 
                 disabled={!harContent || isProcessing}
@@ -315,7 +477,7 @@ export const HarToJMeter = () => {
                 ) : (
                   <>
                     <Zap className="h-4 w-4 mr-2" />
-                    Generate JMeter Script
+                    Generate JMX
                   </>
                 )}
               </Button>

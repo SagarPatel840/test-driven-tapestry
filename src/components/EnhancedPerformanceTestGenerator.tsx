@@ -472,7 +472,7 @@ export const EnhancedPerformanceTestGenerator = () => {
       }, 200);
 
       const { data, error } = await supabase.functions.invoke('har-to-jmeter', {
-        body: { harContent }
+        body: { harContent, aiProvider }
       });
 
       clearInterval(progressInterval);
@@ -888,211 +888,237 @@ ${rtfContent}
         </TabsList>
 
         <TabsContent value="generate-jmx" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TestTube className="h-5 w-5" />
-                JMeter Test Plan Generator
-              </CardTitle>
-              <CardDescription>
-                Convert Swagger specifications or HAR files to JMeter test plans
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeJmxTab} onValueChange={setActiveJmxTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="swagger">Swagger to JMX</TabsTrigger>
-                  <TabsTrigger value="har">HAR to JMX</TabsTrigger>
-                </TabsList>
+          <div className="flex items-center gap-2 mb-6">
+            <FileText className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-bold">JMX Generation Tools</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[800px]">
+            {/* Swagger to JMX Section */}
+            <div className="space-y-6">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Swagger to JMX
+                  </CardTitle>
+                  <CardDescription>
+                    Upload your OpenAPI/Swagger specification to generate JMeter test plans
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="swaggerFile">Swagger/OpenAPI File</Label>
+                    <Input
+                      id="swaggerFile"
+                      type="file"
+                      accept=".json,.yaml,.yml"
+                      onChange={handleSwaggerFileUpload}
+                      className="cursor-pointer"
+                    />
+                  </div>
 
-                <TabsContent value="swagger" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="swagger-file">Upload Swagger/OpenAPI File</Label>
-                        <Input
-                          id="swagger-file"
-                          type="file"
-                          accept=".json,.yaml,.yml"
-                          onChange={handleSwaggerFileUpload}
-                          className="mt-2"
-                        />
-                      </div>
+                  <div className="text-center text-muted-foreground">— OR —</div>
 
-                      <div>
-                        <Label htmlFor="swagger-content">Or Paste Swagger Content</Label>
-                        <Textarea
-                          id="swagger-content"
-                          placeholder="Paste your OpenAPI/Swagger specification here..."
-                          value={swaggerContent}
-                          onChange={(e) => setSwaggerContent(e.target.value)}
-                          className="mt-2"
-                          rows={10}
-                        />
-                      </div>
+                  <div>
+                    <Label htmlFor="swaggerContent">Paste Swagger/OpenAPI Content</Label>
+                    <Textarea
+                      id="swaggerContent"
+                      placeholder="Paste your Swagger/OpenAPI JSON or YAML content here..."
+                      value={swaggerContent}
+                      onChange={(e) => setSwaggerContent(e.target.value)}
+                      rows={6}
+                      className="font-mono text-sm"
+                    />
+                  </div>
 
-                      <div>
-                        <Label htmlFor="base-url">Base URL</Label>
-                        <Input
-                          id="base-url"
-                          type="url"
-                          placeholder="https://api.example.com"
-                          value={swaggerConfig.baseUrl}
-                          onChange={(e) => setSwaggerConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
-                          className="mt-2"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Group Requests By</Label>
-                        <Select 
-                          value={swaggerConfig.groupBy} 
-                          onValueChange={(value: 'tag' | 'path') => setSwaggerConfig(prev => ({ ...prev, groupBy: value }))}
-                        >
-                          <SelectTrigger className="mt-2">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="tag">Tags</SelectItem>
-                            <SelectItem value="path">Path Segments</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="baseUrl">Base URL</Label>
+                      <Input
+                        id="baseUrl"
+                        placeholder="https://api.example.com"
+                        value={swaggerConfig.baseUrl}
+                        onChange={(e) => setSwaggerConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+                      />
                     </div>
 
-                    <div className="space-y-4">
-                      <Button 
-                        onClick={processSwagger}
-                        disabled={isSwaggerProcessing || !swaggerContent.trim() || !swaggerConfig.baseUrl.trim()}
-                        className="w-full"
+                    <div>
+                      <Label htmlFor="groupBy">Group Operations By</Label>
+                      <Select 
+                        value={swaggerConfig.groupBy} 
+                        onValueChange={(value: 'tag' | 'path') => setSwaggerConfig(prev => ({ ...prev, groupBy: value }))}
                       >
-                        {isSwaggerProcessing ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="h-4 w-4 mr-2" />
-                            Generate JMeter XML
-                          </>
-                        )}
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tag">Tags</SelectItem>
+                          <SelectItem value="path">Path</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      {swaggerJmeterXml && (
-                        <div className="space-y-3">
-                          <Alert>
-                            <CheckCircle className="h-4 w-4" />
-                            <AlertDescription>
-                              JMeter test plan generated successfully! You can now download the JMX file.
-                            </AlertDescription>
-                          </Alert>
-                          
-                          <Button onClick={downloadSwaggerJMX} variant="outline" className="w-full">
-                            <Download className="h-4 w-4 mr-2" />
-                            Download JMX File
-                          </Button>
-                        </div>
-                      )}
+                    <div>
+                      <Label htmlFor="swaggerAiProvider">AI Provider</Label>
+                      <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="google">Google AI (Gemini)</SelectItem>
+                          <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                </TabsContent>
 
-                <TabsContent value="har" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="har-file">Upload HAR File</Label>
-                        <Input
-                          id="har-file"
-                          type="file"
-                          accept=".har"
-                          onChange={handleHarFileUpload}
-                          className="mt-2"
-                        />
+                  <Button 
+                    onClick={processSwagger} 
+                    disabled={!swaggerContent.trim() || !swaggerConfig.baseUrl.trim() || isSwaggerProcessing}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isSwaggerProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Generating JMeter XML...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Generate JMeter Test Plan
+                      </>
+                    )}
+                  </Button>
+
+                  {swaggerJmeterXml && (
+                    <div className="pt-4 border-t space-y-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="font-medium">JMeter Test Plan Generated</span>
                       </div>
-
-                      {harFile && (
-                        <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-sm font-medium">Selected file:</p>
-                          <p className="text-sm text-muted-foreground">{harFile.name}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <Button 
-                        onClick={processHar}
-                        disabled={isHarProcessing || !harContent}
-                        className="w-full"
-                      >
-                        {isHarProcessing ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Processing HAR...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="h-4 w-4 mr-2" />
-                            Convert to JMeter
-                          </>
-                        )}
+                      <Button onClick={downloadSwaggerJMX} className="w-full" variant="outline">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download JMX File
                       </Button>
-
-                      {isHarProcessing && harProgress > 0 && (
-                        <div className="space-y-2">
-                          <Progress value={harProgress} className="w-full" />
-                          <p className="text-sm text-center text-muted-foreground">
-                            Processing... {harProgress}%
-                          </p>
-                        </div>
-                      )}
-
-                      {harResult && (
-                        <div className="space-y-3">
-                          <Alert>
-                            <CheckCircle className="h-4 w-4" />
-                            <AlertDescription>
-                              HAR file converted successfully! JMeter test plan is ready for download.
-                            </AlertDescription>
-                          </Alert>
-                          
-                          <Button onClick={downloadHarJMX} variant="outline" className="w-full">
-                            <Download className="h-4 w-4 mr-2" />
-                            Download JMX File
-                          </Button>
-
-                          <div className="p-4 bg-muted rounded-lg space-y-2">
-                            <h4 className="font-medium">Analysis Summary</h4>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">Total Requests:</span>
-                                <span className="ml-2 font-medium">{harResult.summary.totalRequests}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Unique Domains:</span>
-                                <span className="ml-2 font-medium">{harResult.summary.uniqueDomains.length}</span>
-                              </div>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Methods Used:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {harResult.summary.methodsUsed.map(method => (
-                                  <Badge key={method} variant="secondary" className="text-xs">
-                                    {method}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* HAR to JMX Section */}
+            <div className="space-y-6">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-primary" />
+                    HAR to JMX
+                  </CardTitle>
+                  <CardDescription>
+                    Upload a HAR file to generate JMeter performance test scripts
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="harFile">Upload HAR File</Label>
+                    <Input
+                      id="harFile"
+                      type="file"
+                      accept=".har"
+                      onChange={handleHarFileUpload}
+                      className="cursor-pointer"
+                    />
+                    {harFile && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Selected: {harFile.name}
+                      </p>
+                    )}
                   </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+
+                  <div className="text-center text-muted-foreground">— OR —</div>
+
+                  <div>
+                    <Label htmlFor="harContentPaste">Paste HAR JSON Content</Label>
+                    <Textarea
+                      id="harContentPaste"
+                      placeholder="Paste your HAR file JSON content here..."
+                      value={harContent}
+                      onChange={(e) => setHarContent(e.target.value)}
+                      rows={6}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="harAiProvider">AI Provider</Label>
+                    <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="google">Google AI (Gemini)</SelectItem>
+                        <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    onClick={processHar} 
+                    disabled={!harContent.trim() || isHarProcessing}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isHarProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Processing with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Generate JMeter Test Plan
+                      </>
+                    )}
+                  </Button>
+
+                  {isHarProcessing && harProgress > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Processing Progress</span>
+                        <span>{harProgress}%</span>
+                      </div>
+                      <Progress value={harProgress} className="w-full" />
+                    </div>
+                  )}
+
+                  {harResult && (
+                    <div className="pt-4 border-t space-y-3">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="font-medium">JMeter Script Generated</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                        <div>
+                          <div className="font-medium">Total Requests</div>
+                          <div className="text-lg font-bold text-primary">{harResult.summary.totalRequests}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium">Avg Response Time</div>
+                          <div className="text-lg font-bold text-primary">{harResult.summary.avgResponseTime}ms</div>
+                        </div>
+                      </div>
+                      <Button onClick={downloadHarJMX} className="w-full" variant="outline">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download JMX File
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="generate-report" className="space-y-6">
