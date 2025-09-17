@@ -202,7 +202,7 @@ ${JSON.stringify(swaggerSpec, null, 2)}`;
     
     if (jmeterXmlFromAI && jmeterXmlFromAI.includes('<jmeterTestPlan')) {
       console.log('Using AI-generated JMeter XML');
-      finalJmeterXml = jmeterXmlFromAI;
+      finalJmeterXml = enhanceJMeterXML(jmeterXmlFromAI, loadConfig);
     } else {
       console.log('Using fallback JMeter XML generation');
       // Fallback: generate basic JMeter XML locally
@@ -465,4 +465,132 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
     </hashTree>
   </hashTree>
 </jmeterTestPlan>`;
+}
+
+// Function to enhance AI-generated JMX with missing essential elements
+function enhanceJMeterXML(aiGeneratedXml: string, loadConfig: LoadConfig): string {
+  let enhancedXml = aiGeneratedXml;
+  
+  // Check and add missing listeners if not present
+  if (!enhancedXml.includes('SummaryReport')) {
+    console.log('Adding missing Summary Report listener');
+    const summaryReport = `
+      <!-- Summary Report -->
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>`;
+    
+    enhancedXml = enhancedXml.replace(
+      '</hashTree>\n</jmeterTestPlan>',
+      summaryReport + '\n    </hashTree>\n  </hashTree>\n</jmeterTestPlan>'
+    );
+  }
+
+  if (!enhancedXml.includes('ViewResultsFullVisualizer')) {
+    console.log('Adding missing View Results Tree listener');
+    const viewResultsTree = `
+      <!-- View Results Tree -->
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>true</responseData>
+            <samplerData>true</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>true</responseHeaders>
+            <requestHeaders>true</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>`;
+    
+    enhancedXml = enhancedXml.replace(
+      '</hashTree>\n</jmeterTestPlan>',
+      viewResultsTree + '\n    </hashTree>\n  </hashTree>\n</jmeterTestPlan>'
+    );
+  }
+
+  // Check and enhance HTTP samplers to ensure they have proper body data
+  if (loadConfig.addCsvConfig && !enhancedXml.includes('CSVDataSet')) {
+    console.log('Adding missing CSV Data Set Config');
+    const csvConfig = `
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">
+          <stringProp name="delimiter">,</stringProp>
+          <stringProp name="fileEncoding">UTF-8</stringProp>
+          <stringProp name="filename">test_data.csv</stringProp>
+          <boolProp name="ignoreFirstLine">true</boolProp>
+          <boolProp name="quotedData">false</boolProp>
+          <boolProp name="recycle">true</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+          <boolProp name="stopThread">false</boolProp>
+          <stringProp name="variableNames">userId,userEmail,authToken,testData</stringProp>
+        </CSVDataSet>
+        <hashTree/>`;
+    
+    // Add CSV config after thread group opening
+    enhancedXml = enhancedXml.replace(
+      /<ThreadGroup[^>]*>\s*<hashTree>/g,
+      (match) => match + csvConfig
+    );
+  }
+
+  return enhancedXml;
 }

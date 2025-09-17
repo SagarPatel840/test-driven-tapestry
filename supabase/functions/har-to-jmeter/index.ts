@@ -186,8 +186,11 @@ ${JSON.stringify(harData, null, 2)}`;
     if (!jmxContent || !jmxContent.includes('<jmeterTestPlan')) {
       throw new Error('AI did not generate valid JMeter XML content');
     }
+
+    // Enhance JMX content with missing essential elements
+    jmxContent = enhanceHarJMeterXML(jmxContent, loadConfig, entries);
     
-    console.log('JMeter XML generated successfully');
+    console.log('JMeter XML generated and enhanced successfully');
     
     return new Response(JSON.stringify({ 
       jmxContent,
@@ -218,4 +221,188 @@ ${JSON.stringify(harData, null, 2)}`;
   }
 });
 
-// This function is no longer needed as JMX generation is now handled by AI
+// Function to enhance AI-generated HAR JMX with missing essential elements
+function enhanceHarJMeterXML(aiGeneratedXml: string, loadConfig: LoadConfig, entries: HarEntry[]): string {
+  let enhancedXml = aiGeneratedXml;
+  
+  // Check and add missing listeners if not present
+  if (!enhancedXml.includes('SummaryReport')) {
+    console.log('Adding missing Summary Report listener');
+    const summaryReport = `
+      <!-- Summary Report -->
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>`;
+    
+    enhancedXml = enhancedXml.replace(
+      '</hashTree>\n</jmeterTestPlan>',
+      summaryReport + '\n    </hashTree>\n  </hashTree>\n</jmeterTestPlan>'
+    );
+  }
+
+  if (!enhancedXml.includes('ViewResultsFullVisualizer')) {
+    console.log('Adding missing View Results Tree listener');
+    const viewResultsTree = `
+      <!-- View Results Tree -->
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>true</responseData>
+            <samplerData>true</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>true</responseHeaders>
+            <requestHeaders>true</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>`;
+    
+    enhancedXml = enhancedXml.replace(
+      '</hashTree>\n</jmeterTestPlan>',
+      viewResultsTree + '\n    </hashTree>\n  </hashTree>\n</jmeterTestPlan>'
+    );
+  }
+
+  // Add Cookie Manager if not present
+  if (!enhancedXml.includes('CookieManager')) {
+    console.log('Adding missing Cookie Manager');
+    const cookieManager = `
+        <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">
+          <collectionProp name="CookieManager.cookies"/>
+          <boolProp name="CookieManager.clearEachIteration">false</boolProp>
+          <boolProp name="CookieManager.controlledByThreadGroup">false</boolProp>
+        </CookieManager>
+        <hashTree/>`;
+    
+    // Add Cookie Manager after thread group opening
+    enhancedXml = enhancedXml.replace(
+      /<ThreadGroup[^>]*>\s*<hashTree>/g,
+      (match) => match + cookieManager
+    );
+  }
+
+  // Add Cache Manager if not present
+  if (!enhancedXml.includes('CacheManager')) {
+    console.log('Adding missing Cache Manager');
+    const cacheManager = `
+        <CacheManager guiclass="CacheManagerGui" testclass="CacheManager" testname="HTTP Cache Manager" enabled="true">
+          <boolProp name="clearEachIteration">true</boolProp>
+          <boolProp name="useExpires">true</boolProp>
+          <boolProp name="CacheManager.controlledByThread">false</boolProp>
+        </CacheManager>
+        <hashTree/>`;
+    
+    // Add Cache Manager after thread group opening
+    enhancedXml = enhancedXml.replace(
+      /<ThreadGroup[^>]*>\s*<hashTree>/g,
+      (match) => match + cacheManager
+    );
+  }
+
+  // Ensure body data is properly included for POST/PUT/PATCH requests
+  entries.forEach((entry, index) => {
+    if (['POST', 'PUT', 'PATCH'].includes(entry.request.method) && entry.request.postData?.text) {
+      const bodyData = entry.request.postData.text;
+      
+      // Check if this request's body data is missing in the XML
+      if (!enhancedXml.includes(bodyData.substring(0, Math.min(50, bodyData.length)))) {
+        console.log(`Ensuring body data is included for ${entry.request.method} request ${index + 1}`);
+        
+        // Find and enhance the corresponding HTTP sampler
+        const samplerPattern = new RegExp(
+          `<HTTPSamplerProxy[^>]*testname="[^"]*${entry.request.method}[^"]*"[^>]*>([\\s\\S]*?)</HTTPSamplerProxy>`,
+          'g'
+        );
+        
+        enhancedXml = enhancedXml.replace(samplerPattern, (match) => {
+          if (!match.includes('postBodyRaw')) {
+            const bodyXml = `
+        <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+        <elementProp name="HTTPsampler.postBodyRaw" elementType="Arguments">
+          <collectionProp name="Arguments.arguments">
+            <elementProp name="" elementType="HTTPArgument">
+              <boolProp name="HTTPArgument.always_encode">false</boolProp>
+              <stringProp name="Argument.value">${bodyData.replace(/[<>&'"]/g, (c) => {
+                switch (c) {
+                  case '<': return '&lt;';
+                  case '>': return '&gt;';
+                  case '&': return '&amp;';
+                  case "'": return '&apos;';
+                  case '"': return '&quot;';
+                  default: return c;
+                }
+              })}</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+          </collectionProp>
+        </elementProp>`;
+            
+            return match.replace('</HTTPSamplerProxy>', bodyXml + '\n      </HTTPSamplerProxy>');
+          }
+          return match;
+        });
+      }
+    }
+  });
+
+  return enhancedXml;
+}
