@@ -72,9 +72,8 @@ serve(async (req) => {
 
     console.log(`Found ${apiInfo.methods.length} API endpoints to analyze`);
 
-    // Generate JMX generation prompt
-    const jmxPrompt = `
-You are an expert in JMeter test plan generation.  
+    // Generate JMX generation prompt using user's exact specification
+    const jmxPrompt = `You are an expert in JMeter test plan generation.  
 Your task is to create a complete Apache JMeter (.jmx) file based on the provided Swagger (OpenAPI) specification.  
 
 ### Requirements:  
@@ -85,7 +84,7 @@ Your task is to create a complete Apache JMeter (.jmx) file based on the provide
    - Authentication requirements  
 
 2. Create a JMeter Test Plan (.jmx) with the following:  
-   - Thread Group with configurable threads (${loadConfig.threadCount}), ramp-up (${loadConfig.rampUpTime}s), and loop count (${loadConfig.loopCount}).  
+   - Thread Group with configurable threads, ramp-up, and loop count.  
    - HTTP Request Samplers for every endpoint in Swagger.  
    - Group Samplers by API tag or path for better readability.  
    - Add \`HTTP Header Manager\` with required headers such as \`Content-Type: application/json\`, \`Authorization\`, etc.  
@@ -99,33 +98,19 @@ Your task is to create a complete Apache JMeter (.jmx) file based on the provide
    - Add \`JSON Extractor\` or \`Regular Expression Extractor\` for correlation of response values (e.g., auth token).  
    - Ensure the JMX is well-formed XML and can be directly opened in JMeter without errors.  
 
-### API Information:
-- Title: ${apiInfo.title}
-- Version: ${apiInfo.version}
-- Description: ${apiInfo.description}
-- Base URL: ${apiInfo.baseUrl}
-- Total Endpoints: ${apiInfo.endpoints}
-
-### Load Test Configuration:
-- Threads: ${loadConfig.threadCount}
-- Ramp-up: ${loadConfig.rampUpTime}s
-- Duration: ${loadConfig.duration}s
-- Loops: ${loadConfig.loopCount}
-
-### Sample Endpoints:
-${apiInfo.methods.slice(0, 10).map(ep => `${ep.method} ${ep.path} - ${ep.summary}`).join('\n')}
-
-### Input Swagger/OpenAPI specification:
-${JSON.stringify(swaggerSpec, null, 2)}
-
 ### Output:  
-- Provide the final JMX file content as valid XML inside a code block.  
+- Provide the final JMX file content as valid XML inside code block.  
 - Do not summarize, only return the JMX file.  
 - Ensure all nodes (\`TestPlan\`, \`ThreadGroup\`, \`HTTPSamplerProxy\`, etc.) follow correct JMeter XML structure.  
 
+### Input:  
+Swagger/OpenAPI specification (YAML or JSON format) will be provided.  
+
 ### Task:  
 Generate the complete JMX file according to the above rules.
-    `;
+
+### Swagger/OpenAPI specification:
+${JSON.stringify(swaggerSpec, null, 2)}`;
 
     let jmeterXmlFromAI = "";
 
