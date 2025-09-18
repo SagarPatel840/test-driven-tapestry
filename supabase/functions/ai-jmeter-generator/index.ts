@@ -64,10 +64,10 @@ serve(async (req) => {
       methods: []
     };
 
-    // Collect all HTTP methods and endpoints
+    // Collect all HTTP methods and endpoints (including head, options for completeness)
     Object.entries(parsedSwaggerSpec.paths).forEach(([path, pathItem]: [string, any]) => {
       Object.entries(pathItem).forEach(([method, operation]: [string, any]) => {
-        if (['get', 'post', 'put', 'delete', 'patch'].includes(method)) {
+        if (['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(method)) {
           apiInfo.methods.push({
             method: method.toUpperCase(),
             path,
@@ -315,7 +315,7 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
   
   Object.entries(swaggerSpec.paths || {}).forEach(([path, pathItem]: [string, any]) => {
     Object.entries(pathItem).forEach(([method, operation]: [string, any]) => {
-      if (['get', 'post', 'put', 'delete', 'patch'].includes(method)) {
+      if (['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(method)) {
         const tag = operation.tags?.[0] || 'Default';
         if (!endpointGroups[tag]) endpointGroups[tag] = [];
         endpointGroups[tag].push({ path, method: method.toUpperCase(), operation });

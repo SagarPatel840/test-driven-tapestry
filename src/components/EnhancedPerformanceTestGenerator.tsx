@@ -439,10 +439,10 @@ export const EnhancedPerformanceTestGenerator = () => {
       console.log('AI-generated JMX content received:', data.metadata);
       setSwaggerJmeterXml(data.jmeterXml);
 
-      // Calculate total endpoints from the Swagger spec
+      // Calculate total endpoints from the Swagger spec (matching AI processing logic)
       const totalEndpoints = Object.keys(spec.paths || {}).reduce((total, path) => {
         const pathMethods = Object.keys(spec.paths[path] || {}).filter(method => 
-          ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(method)
+          ['get', 'post', 'put', 'delete', 'patch'].includes(method)
         );
         return total + pathMethods.length;
       }, 0);
