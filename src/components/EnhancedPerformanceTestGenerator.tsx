@@ -74,6 +74,7 @@ export const EnhancedPerformanceTestGenerator = () => {
   const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const [aiAnalysis, setAiAnalysis] = useState<Analysis | null>(null);
   const [swaggerResult, setSwaggerResult] = useState<{ totalEndpoints: number; aiProvider: string } | null>(null);
+  const [swaggerAdditionalPrompt, setSwaggerAdditionalPrompt] = useState("");
 
   // HAR to JMX state
   const [harFile, setHarFile] = useState<File | null>(null);
@@ -81,6 +82,7 @@ export const EnhancedPerformanceTestGenerator = () => {
   const [isHarProcessing, setIsHarProcessing] = useState(false);
   const [harProgress, setHarProgress] = useState(0);
   const [harResult, setHarResult] = useState<ProcessingResult | null>(null);
+  const [harAdditionalPrompt, setHarAdditionalPrompt] = useState("");
 
   // Generated Reports state
   const [reports, setReports] = useState<PerformanceReport[]>([]);
@@ -417,7 +419,8 @@ export const EnhancedPerformanceTestGenerator = () => {
         body: {
           swaggerSpec: spec,
           loadConfig: loadConfig,
-          aiProvider: aiProvider
+          aiProvider: aiProvider,
+          additionalPrompt: swaggerAdditionalPrompt
         }
       });
 
@@ -464,7 +467,7 @@ export const EnhancedPerformanceTestGenerator = () => {
     } finally {
       setIsSwaggerProcessing(false);
     }
-  }, [swaggerContent, swaggerConfig, aiProvider, toast]);
+  }, [swaggerContent, swaggerConfig, aiProvider, swaggerAdditionalPrompt, toast]);
 
   const downloadSwaggerJMX = () => {
     if (!swaggerJmeterXml) return;
@@ -537,6 +540,7 @@ export const EnhancedPerformanceTestGenerator = () => {
         body: { 
           harContent, 
           aiProvider,
+          additionalPrompt: harAdditionalPrompt,
           loadConfig: {
             testPlanName: "HAR Performance Test",
             threadCount: 10,
@@ -612,7 +616,7 @@ export const EnhancedPerformanceTestGenerator = () => {
       setIsHarProcessing(false);
       setTimeout(() => setHarProgress(0), 1000);
     }
-  }, [harContent, toast]);
+  }, [harContent, harAdditionalPrompt, toast]);
 
   const downloadHarJMX = () => {
     if (!harResult?.jmxContent) return;
@@ -1081,6 +1085,18 @@ ${rtfContent}
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div>
+                      <Label htmlFor="swaggerAdditionalPrompt">Additional Prompt Details (Optional)</Label>
+                      <Textarea
+                        id="swaggerAdditionalPrompt"
+                        placeholder="Add any specific requirements or customizations for the JMX generation..."
+                        value={swaggerAdditionalPrompt}
+                        onChange={(e) => setSwaggerAdditionalPrompt(e.target.value)}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
                   </div>
 
                   <Button 
@@ -1199,6 +1215,18 @@ ${rtfContent}
                         <SelectItem value="openai">OpenAI (GPT)</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="harAdditionalPrompt">Additional Prompt Details (Optional)</Label>
+                    <Textarea
+                      id="harAdditionalPrompt"
+                      placeholder="Add any specific requirements or customizations for the JMX generation..."
+                      value={harAdditionalPrompt}
+                      onChange={(e) => setHarAdditionalPrompt(e.target.value)}
+                      rows={3}
+                      className="text-sm"
+                    />
                   </div>
 
                   <Button 
