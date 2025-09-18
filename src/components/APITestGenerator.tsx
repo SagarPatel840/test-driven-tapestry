@@ -33,6 +33,7 @@ interface AISuggestion {
 export const APITestGenerator = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [testCases, setTestCases] = useState<Array<any>>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
@@ -118,7 +119,10 @@ export const APITestGenerator = () => {
       console.log(`Using AI provider: ${aiProvider}, calling function: ${functionName}`);
       
       const { data, error } = await supabase.functions.invoke(functionName, {
-        body: { swaggerSpec: spec }
+        body: { 
+          swaggerSpec: spec,
+          additionalPrompt: additionalPrompt.trim() || undefined
+        }
       });
 
       if (error) throw error;
@@ -736,6 +740,20 @@ export const APITestGenerator = () => {
                 placeholder="Add custom instructions for test case generation (e.g., 'Include admin and user role testing', 'Focus on security scenarios', etc.)"
                 className="min-h-[100px]"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="additionalPrompt">Additional Prompt Details</Label>
+              <Textarea
+                id="additionalPrompt"
+                value={additionalPrompt}
+                onChange={(e) => setAdditionalPrompt(e.target.value)}
+                placeholder="Enter any additional requirements or specifications for test case generation..."
+                className="min-h-[120px]"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                These details will be combined with the AI prompt to customize test case generation according to your specific needs.
+              </p>
             </div>
 
             {isProcessing && (

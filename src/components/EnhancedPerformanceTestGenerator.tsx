@@ -66,12 +66,14 @@ export const EnhancedPerformanceTestGenerator = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
   const [swaggerJmeterXml, setSwaggerJmeterXml] = useState("");
   const [isSwaggerProcessing, setIsSwaggerProcessing] = useState(false);
+  const [swaggerProgress, setSwaggerProgress] = useState(0);
   const [swaggerConfig, setSwaggerConfig] = useState<SwaggerConfig>({
     baseUrl: "",
     groupBy: 'tag'
   });
   const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const [aiAnalysis, setAiAnalysis] = useState<Analysis | null>(null);
+  const [swaggerResult, setSwaggerResult] = useState<{ totalEndpoints: number; aiProvider: string } | null>(null);
 
   // HAR to JMX state
   const [harFile, setHarFile] = useState<File | null>(null);
@@ -379,32 +381,90 @@ export const EnhancedPerformanceTestGenerator = () => {
     }
 
     setIsSwaggerProcessing(true);
+    setSwaggerProgress(0);
     setSwaggerJmeterXml("");
     setAiAnalysis(null);
 
     try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setSwaggerProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
+
+      console.log('Processing Swagger content with AI...');
       const spec = swaggerContent.trim().startsWith('{') 
         ? JSON.parse(swaggerContent) 
         : yaml.load(swaggerContent) as any;
 
-      const jmxContent = generateSwaggerJMeterXml(spec, swaggerConfig);
-      setSwaggerJmeterXml(jmxContent);
+      console.log('Parsed spec:', spec);
+      console.log('Using AI provider:', aiProvider);
+
+      // Prepare load config for the edge function
+      const loadConfig = {
+        testPlanName: "API Performance Test",
+        threadCount: 10,
+        rampUpTime: 60,
+        duration: 300,
+        loopCount: 1,
+        addAssertions: true,
+        addCorrelation: true,
+        addCsvConfig: false,
+        baseUrl: swaggerConfig.baseUrl
+      };
+
+      // Call the AI-powered JMeter generator edge function
+      const { data, error } = await supabase.functions.invoke('ai-jmeter-generator', {
+        body: {
+          swaggerSpec: spec,
+          loadConfig: loadConfig,
+          aiProvider: aiProvider
+        }
+      });
+
+      clearInterval(progressInterval);
+      setSwaggerProgress(100);
+
+      if (error) {
+        console.error('AI JMeter generation error:', error);
+        throw new Error(error.message || 'Failed to generate JMeter test plan with AI');
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Unknown error occurred during AI generation');
+      }
+
+      console.log('AI-generated JMX content received:', data.metadata);
+      setSwaggerJmeterXml(data.jmeterXml);
+
+      // Calculate total endpoints from the Swagger spec
+      const totalEndpoints = Object.keys(spec.paths || {}).reduce((total, path) => {
+        const pathMethods = Object.keys(spec.paths[path] || {}).filter(method => 
+          ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(method)
+        );
+        return total + pathMethods.length;
+      }, 0);
+
+      setSwaggerResult({
+        totalEndpoints,
+        aiProvider: data.metadata?.provider || aiProvider
+      });
 
       toast({
         title: "JMeter test plan generated successfully",
-        description: "You can now download the JMX file"
+        description: `Generated with ${data.metadata?.provider || aiProvider} AI - ${totalEndpoints} endpoints processed`
       });
+
     } catch (error: any) {
-      console.error('Error processing swagger:', error);
+      console.error('Error processing swagger with AI:', error);
       toast({
-        title: "Processing failed",
-        description: error.message || "Failed to generate JMeter test plan",
+        title: "AI processing failed",
+        description: error.message || "Failed to generate JMeter test plan with AI",
         variant: "destructive"
       });
     } finally {
       setIsSwaggerProcessing(false);
     }
-  }, [swaggerContent, swaggerConfig, toast]);
+  }, [swaggerContent, swaggerConfig, aiProvider, toast]);
 
   const downloadSwaggerJMX = () => {
     if (!swaggerJmeterXml) return;
@@ -467,29 +527,79 @@ export const EnhancedPerformanceTestGenerator = () => {
     setHarResult(null);
 
     try {
+      console.log('Starting HAR processing with AI provider:', aiProvider);
+      
       const progressInterval = setInterval(() => {
         setHarProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
       const { data, error } = await supabase.functions.invoke('har-to-jmeter', {
-        body: { harContent, aiProvider }
+        body: { 
+          harContent, 
+          aiProvider,
+          loadConfig: {
+            testPlanName: "HAR Performance Test",
+            threadCount: 10,
+            rampUpTime: 60,
+            duration: 300,
+            loopCount: 1,
+            addAssertions: true,
+            addCorrelation: true,
+            addCsvConfig: false
+          }
+        }
       });
 
       clearInterval(progressInterval);
       setHarProgress(100);
 
       if (error) {
+        console.error('HAR processing error:', error);
         throw new Error(error.message || 'Failed to process HAR file');
       }
 
-      if (data?.success) {
-        setHarResult(data.data);
+      if (!data) {
+        console.error('No data received from HAR processing');
+        throw new Error('No data received from HAR processing');
+      }
+
+      console.log('HAR processing response received:', {
+        hasJmxContent: !!data.jmxContent,
+        hasError: !!data.error,
+        summary: data.summary
+      });
+
+      // Check if there's an error in the response
+      if (data.error) {
+        throw new Error(data.error || 'HAR processing failed');
+      }
+
+      // The HAR function returns data directly (not wrapped in success/data structure)
+      if (data.jmxContent) {
+        const harResultData = {
+          jmxContent: data.jmxContent,
+          analysis: {
+            correlationFields: [],
+            requestGroups: [],
+            parameterization: [],
+            scenarios: [],
+            assertions: []
+          },
+          summary: data.summary || {
+            totalRequests: 0,
+            uniqueDomains: [],
+            methodsUsed: [],
+            avgResponseTime: 0
+          }
+        };
+        
+        setHarResult(harResultData);
         toast({
           title: "HAR file processed successfully",
-          description: "JMeter test plan has been generated"
+          description: `JMeter test plan generated with ${data.summary?.totalRequests || 0} requests`
         });
       } else {
-        throw new Error(data?.error || 'Unknown error occurred');
+        throw new Error('No JMX content received from HAR processing');
       }
     } catch (error: any) {
       console.error('HAR processing error:', error);
@@ -974,7 +1084,12 @@ ${rtfContent}
                   </div>
 
                   <Button 
-                    onClick={processSwagger} 
+                    onClick={() => {
+                      console.log('Generate JMeter Test Plan button clicked');
+                      console.log('Swagger content length:', swaggerContent.length);
+                      console.log('Base URL:', swaggerConfig.baseUrl);
+                      processSwagger();
+                    }} 
                     disabled={!swaggerContent.trim() || !swaggerConfig.baseUrl.trim() || isSwaggerProcessing}
                     className="w-full"
                     size="lg"
@@ -982,7 +1097,7 @@ ${rtfContent}
                     {isSwaggerProcessing ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Generating JMeter XML...
+                        Generating with AI...
                       </>
                     ) : (
                       <>
@@ -992,12 +1107,34 @@ ${rtfContent}
                     )}
                   </Button>
 
+                  {isSwaggerProcessing && swaggerProgress > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Processing Progress</span>
+                        <span>{swaggerProgress}%</span>
+                      </div>
+                      <Progress value={swaggerProgress} className="w-full" />
+                    </div>
+                  )}
+
                   {swaggerJmeterXml && (
                     <div className="pt-4 border-t space-y-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-3">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span className="font-medium">JMeter Test Plan Generated</span>
                       </div>
+                      {swaggerResult && (
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <div className="font-medium">Total Endpoints</div>
+                            <div className="text-lg font-bold text-primary">{swaggerResult.totalEndpoints}</div>
+                          </div>
+                          <div>
+                            <div className="font-medium">AI Provider</div>
+                            <div className="text-lg font-bold text-primary">{swaggerResult.aiProvider}</div>
+                          </div>
+                        </div>
+                      )}
                       <Button onClick={downloadSwaggerJMX} className="w-full" variant="outline">
                         <Download className="w-4 h-4 mr-2" />
                         Download JMX File

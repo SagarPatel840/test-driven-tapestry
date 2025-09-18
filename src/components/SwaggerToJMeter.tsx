@@ -36,6 +36,8 @@ export const SwaggerToJMeter = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
   const [jmeterXml, setJmeterXml] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
+  const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const [config, setConfig] = useState<JMeterConfig>({
     threadCount: 10,
     rampUpTime: 60,
@@ -56,7 +58,6 @@ export const SwaggerToJMeter = () => {
     useKeepAlive: true,
     enableReporting: true
   });
-  const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const { toast } = useToast();
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -720,54 +721,47 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
     }
 
     setIsProcessing(true);
+    
     try {
-      // Parse swagger/openapi spec
-      let spec;
-      try {
-        spec = JSON.parse(swaggerContent);
-      } catch {
-        try {
-          spec = yaml.load(swaggerContent);
-        } catch (yamlError) {
-          throw new Error("Invalid JSON or YAML format");
-        }
-      }
-
-      // Basic validation
-      if (!spec || typeof spec !== 'object') {
-        throw new Error("Invalid specification format");
-      }
-      
-      if (!spec.openapi && !spec.swagger) {
-        throw new Error("Not a valid OpenAPI/Swagger specification");
-      }
-      
-      if (!spec.paths || typeof spec.paths !== 'object') {
-        throw new Error("No paths found in the specification");
-      }
-      
-      // Call AI-powered JMeter generator
+      // Use AI-based JMX generation
       const { data, error } = await supabase.functions.invoke('ai-jmeter-generator', {
         body: {
-          swaggerSpec: spec,
-          loadConfig: config,
-          aiProvider
+          swaggerContent,
+          config,
+          aiProvider,
+          additionalPrompt
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Swagger to JMX error:', error);
+        throw new Error(error.message || 'Unknown error occurred');
+      }
 
-      setJmeterXml(data.jmeterXml);
+      console.log('AI-generated JMX content received:', {
+        provider: aiProvider,
+        endpoints: data?.endpointCount || 0,
+        generatedByAI: true,
+        testPlanName: config.testPlanName
+      });
 
+      if (!data || !data.jmxContent) {
+        throw new Error('No JMX content received from AI');
+      }
+
+      setJmeterXml(data.jmxContent);
+      
       toast({
-        title: "AI-Generated JMeter Test Plan Ready",
-        description: `Created with ${data.metadata.provider} for ${data.metadata.endpoints} endpoints`,
+        title: "JMeter Test Plan Generated",
+        description: `AI-generated test plan ready with ${data.endpointCount || 'multiple'} endpoints`,
       });
     } catch (error) {
       console.error('Error generating JMeter file:', error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+      
       toast({
         title: "Error generating JMeter file",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: `Error: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -964,19 +958,7 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="aiProvider">AI Provider</Label>
-                <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google">Google AI (Gemini)</SelectItem>
-                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
+               
               <h4 className="text-sm font-medium">JMeter Configuration</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
@@ -1034,14 +1016,42 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
                 </div>
               </div>
 
-              <Button 
+              <div>
+                <Label htmlFor="aiProvider">AI Provider</Label>
+                <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="google">Google AI (Gemini)</SelectItem>
+                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="additionalPrompt">Additional Prompt Details</Label>
+                <Textarea
+                  id="additionalPrompt"
+                  placeholder="Enter any additional instructions or specific requirements for JMX generation..."
+                  value={additionalPrompt}
+                  onChange={(e) => setAdditionalPrompt(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional: Add extra context or specific requirements for AI-generated JMX
+                </p>
+              </div>
+
+              <Button
                 onClick={handleGenerateJMeter}
                 disabled={!swaggerContent.trim() || isProcessing}
                 size="lg"
                 className="w-full"
               >
                 <Zap className="mr-2 h-4 w-4" />
-                {isProcessing ? "Generating with AI..." : "Generate JMX"}
+                {isProcessing ? "Generating JMeter Test Plan..." : "Generate JMeter Test Plan"}
               </Button>
             </div>
           </CardContent>

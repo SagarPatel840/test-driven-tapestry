@@ -46,7 +46,7 @@ serve(async (req) => {
   }
 
   try {
-    const { harContent, loadConfig, testPlanName = "HAR Performance Test", aiProvider = 'openai' } = await req.json();
+    const { harContent, loadConfig, testPlanName = "HAR Performance Test", aiProvider = 'openai', additionalPrompt = '' } = await req.json();
     
     console.log('Processing HAR file with OpenAI...');
     
@@ -84,6 +84,29 @@ Your task is to generate a complete Apache JMeter (.jmx) file based on the provi
    - Add a \`View Results Tree\` listener for debugging.  
    - Ensure the JMX is well-formed XML and directly runnable in JMeter.  
 
+### Body Data Rules:  
+1. **HAR-based JMX**  
+   - For each request with a postData field in the HAR file:  
+     - Insert the exact JSON/XML/form-data into Body Data of the corresponding HTTP Sampler.  
+     - Replace dynamic values (IDs, emails, tokens) with \`\${variableName}\`.  
+     - Externalize those variables into CSV Data Set Config.  
+
+   Example HAR Body conversion:  
+   HAR postData:  
+   \`\`\`json
+   {"orderId":12345,"status":"PENDING"}
+   \`\`\`
+   JMX Body Data:  
+   \`\`\`json
+   {"orderId":"\${orderId}","status":"\${status}"}
+   \`\`\`
+
+2. **General Body Handling**  
+   - Always wrap request body in elementProp → Argument.value inside the JMX XML.  
+   - Ensure Content-Type in HeaderManager matches the body type.  
+   - If no body is provided in HAR, skip body section but keep headers.  
+   - Ensure the JMX is valid and directly importable in JMeter.  
+
 ### Output:  
 - Provide the final JMX file content as valid XML inside a code block.  
 - Do not summarize, only return the JMX file.  
@@ -95,12 +118,16 @@ HAR file content (JSON format) will be provided.
 ### Task:  
 Generate the complete JMX file according to the above rules.
 
-### HAR file content:
+${additionalPrompt ? `### Additional Requirements:
+${additionalPrompt}
+
+` : ''}### HAR file content:
 ${JSON.stringify(harData, null, 2)}`;
 
+    let providerUsed = aiProvider;
     let jmxGenerationResponse;
     
-    if (aiProvider === 'google') {
+    if (providerUsed === 'google') {
       const googleAIApiKey = Deno.env.get('GOOGLE_AI_API_KEY');
       if (!googleAIApiKey) {
         throw new Error("Google AI API key not configured");
@@ -146,14 +173,39 @@ ${JSON.stringify(harData, null, 2)}`;
     try {
       if (!jmxGenerationResponse.ok) {
         const errorText = await jmxGenerationResponse.text();
-        console.error(`${aiProvider} API error:`, errorText);
-        throw new Error(`${aiProvider} API error: ${jmxGenerationResponse.statusText}`);
+        console.error(`${providerUsed} API error:`, errorText);
+
+        // Fallback: if OpenAI failed and Google key exists, try Google
+        if (providerUsed !== 'google') {
+          const googleAIApiKey = Deno.env.get('GOOGLE_AI_API_KEY');
+          if (googleAIApiKey) {
+            console.log('Falling back to Google AI for JMX generation...');
+            jmxGenerationResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleAIApiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: jmxPrompt }] }]
+              }),
+            });
+            providerUsed = 'google';
+
+            if (!jmxGenerationResponse.ok) {
+              const fallbackErr = await jmxGenerationResponse.text();
+              console.error('Google AI fallback error:', fallbackErr);
+              throw new Error(`${providerUsed} API error: ${jmxGenerationResponse.statusText}`);
+            }
+          } else {
+            throw new Error(`${providerUsed} API error: ${jmxGenerationResponse.statusText}`);
+          }
+        } else {
+          throw new Error(`${providerUsed} API error: ${jmxGenerationResponse.statusText}`);
+        }
       }
 
       const jmxData = await jmxGenerationResponse.json();
-      console.log(`${aiProvider} JMX Generation Response received`);
+      console.log(`${providerUsed} JMX Generation Response received`);
       
-      if (aiProvider === 'google') {
+      if (providerUsed === 'google') {
         if (jmxData.candidates?.[0]?.content?.parts?.[0]?.text) {
           const aiText = jmxData.candidates[0].content.parts[0].text;
           // Extract XML content from code blocks if present
@@ -178,7 +230,7 @@ ${JSON.stringify(harData, null, 2)}`;
         }
       }
     } catch (error) {
-      console.error(`Error generating JMX with ${aiProvider}:`, error);
+      console.error(`Error generating JMX with ${providerUsed}:`, error);
       throw new Error(`Failed to generate JMX file using AI: ${error.message}`);
     }
 
@@ -195,7 +247,7 @@ ${JSON.stringify(harData, null, 2)}`;
     return new Response(JSON.stringify({ 
       jmxContent,
       metadata: {
-        provider: aiProvider === 'google' ? 'Google AI Studio' : 'OpenAI',
+        provider: providerUsed === 'google' ? 'Google AI Studio' : 'OpenAI',
         generatedByAI: true,
         testPlanName: testPlanName
       },

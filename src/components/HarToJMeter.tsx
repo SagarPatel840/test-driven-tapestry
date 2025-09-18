@@ -58,6 +58,7 @@ export const HarToJMeter = () => {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [testPlanName, setTestPlanName] = useState("HAR Performance Test");
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [loadConfig, setLoadConfig] = useState<LoadConfig>({
     threadCount: 10,
     rampUpTime: 60,
@@ -164,26 +165,55 @@ export const HarToJMeter = () => {
           harContent,
           loadConfig,
           testPlanName,
-          aiProvider
+          aiProvider,
+          additionalPrompt
         }
       });
 
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (error) throw error;
+      if (error) {
+        console.error('HAR processing error:', error);
+        throw new Error(error.message || 'Unknown error occurred');
+      }
 
-      setResult(data);
+      console.log('HAR to JMX response data:', data);
+
+      if (!data || !data.jmxContent) {
+        throw new Error('No JMX content received from server');
+      }
+
+      const safeResult: ProcessingResult = {
+        jmxContent: data.jmxContent,
+        analysis: data.analysis ?? {
+          correlationFields: [],
+          requestGroups: [],
+          parameterization: [],
+          scenarios: [],
+          assertions: []
+        },
+        summary: data.summary ?? {
+          totalRequests: 0,
+          uniqueDomains: [],
+          methodsUsed: [],
+          avgResponseTime: 0
+        }
+      };
+
+      setResult(safeResult);
       
       toast({
         title: "JMeter Script Generated",
         description: "Your performance test script is ready for download!"
       });
     } catch (error) {
-      console.error('Processing error:', error);
+      console.error('HAR processing error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to process HAR file";
+      
       toast({
         title: "Processing Failed",
-        description: error instanceof Error ? error.message : "Failed to process HAR file",
+        description: `Error: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
@@ -463,7 +493,22 @@ export const HarToJMeter = () => {
                 </Select>
               </div>
 
-              <Button 
+              <div>
+                <Label htmlFor="additionalPrompt">Additional Prompt Details</Label>
+                <Textarea
+                  id="additionalPrompt"
+                  placeholder="Enter any additional instructions or specific requirements for JMX generation..."
+                  value={additionalPrompt}
+                  onChange={(e) => setAdditionalPrompt(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional: Add extra context or specific requirements for AI-generated JMX
+                </p>
+              </div>
+
+              <Button
                 onClick={processHarFile} 
                 disabled={!harContent || isProcessing}
                 className="w-full"

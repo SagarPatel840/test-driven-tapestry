@@ -40,6 +40,7 @@ interface TestCase {
 
 export const AdvancedAPITestGenerator = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [postmanCollection, setPostmanCollection] = useState<any>(null);
@@ -576,6 +577,20 @@ export const AdvancedAPITestGenerator = () => {
               rows={8}
               className="font-mono text-sm"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="additionalPrompt">Additional Prompt Details</Label>
+            <Textarea
+              id="additionalPrompt"
+              value={additionalPrompt}
+              onChange={(e) => setAdditionalPrompt(e.target.value)}
+              placeholder="Enter any additional requirements or specifications for test case generation..."
+              className="min-h-[120px]"
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              These details will be combined with the AI prompt to customize test case generation according to your specific needs.
+            </p>
           </div>
 
           {swaggerContent && (

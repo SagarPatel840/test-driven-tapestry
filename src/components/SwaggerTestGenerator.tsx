@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const SwaggerTestGenerator = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [testCases, setTestCases] = useState<string[][]>([]);
   const [postmanCollection, setPostmanCollection] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,7 +77,10 @@ export const SwaggerTestGenerator = () => {
       console.log(`Using AI provider: ${aiProvider}, calling function: ${functionName}`);
       
       const { data, error } = await supabase.functions.invoke(functionName, {
-        body: { swaggerSpec }
+        body: { 
+          swaggerSpec,
+          additionalPrompt: additionalPrompt.trim() || undefined
+        }
       });
 
       if (error) throw error;
@@ -198,6 +202,20 @@ export const SwaggerTestGenerator = () => {
               placeholder="Paste your Swagger/OpenAPI specification here..."
               className="min-h-[300px] font-mono text-sm"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="additionalPrompt">Additional Prompt Details</Label>
+            <Textarea
+              id="additionalPrompt"
+              value={additionalPrompt}
+              onChange={(e) => setAdditionalPrompt(e.target.value)}
+              placeholder="Enter any additional requirements or specifications for test case generation..."
+              className="min-h-[120px]"
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              These details will be combined with the AI prompt to customize test case generation according to your specific needs.
+            </p>
           </div>
 
           <Button 

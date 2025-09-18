@@ -22,7 +22,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('📋 Request received:', Object.keys(requestBody));
     
-    const { swaggerSpec } = requestBody;
+    const { swaggerSpec, additionalPrompt } = requestBody;
 
     if (!swaggerSpec) {
       console.log('❌ No swagger spec provided');
@@ -43,7 +43,7 @@ serve(async (req) => {
     console.log('✅ Validations passed');
     console.log('🔑 API Key (first 8 chars):', googleAIApiKey.substring(0, 8));
 
-    const prompt = `You are a Senior QA Analyst specializing in API testing for Lovable-generated applications.
+    let prompt = `You are a Senior QA Analyst specializing in API testing for Lovable-generated applications.
 You will be given a Swagger/OpenAPI specification.
 Your task is to analyze the Swagger specification ONLY and generate comprehensive test cases based strictly on the documented API contract.
 
@@ -106,9 +106,14 @@ ${JSON.stringify(swaggerSpec, null, 2)}
 - Boundary values from min/max constraints in Swagger
 - Invalid formats against Swagger format specifications
 - Schema violations for complex object structures
-- Array validation against Swagger array item schemas
+- Array validation against Swagger array item schemas`;
 
-Generate test cases in this exact format (pipe-separated):
+    // Add additional prompt details if provided
+    if (additionalPrompt && additionalPrompt.trim()) {
+      prompt += `\n\n## Additional Requirements:\n${additionalPrompt.trim()}`;
+    }
+
+    prompt += `\n\nGenerate test cases in this exact format (pipe-separated):
 Test_ID | Endpoint | HTTP_Method | Test_Category | Test_Scenario | Swagger_Constraint_Reference | Request_Headers | Path_Params | Query_Params | Request_Body | Expected_Status | Expected_Response_Schema | Test_Type | Priority
 
 Requirements:
