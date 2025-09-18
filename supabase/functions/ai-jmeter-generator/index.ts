@@ -27,22 +27,22 @@ serve(async (req) => {
   }
 
   try {
-    const { swaggerContent, config, aiProvider = 'google', additionalPrompt = '' } = await req.json();
+    const { swaggerSpec, loadConfig, aiProvider = 'google', additionalPrompt = '' } = await req.json();
     
     console.log('Processing Swagger spec with AI-powered JMeter generation...');
     console.log('AI Provider:', aiProvider);
-    console.log('Load Config:', config);
+    console.log('Load Config:', loadConfig);
 
     // Parse swagger content if it's a string
-    let swaggerSpec;
+    let parsedSwaggerSpec;
     try {
-      swaggerSpec = typeof swaggerContent === 'string' ? JSON.parse(swaggerContent) : swaggerContent;
+      parsedSwaggerSpec = typeof swaggerSpec === 'string' ? JSON.parse(swaggerSpec) : swaggerSpec;
     } catch (error) {
       throw new Error("Invalid Swagger/OpenAPI JSON format");
     }
 
     // Validate inputs
-    if (!swaggerSpec || !swaggerSpec.paths) {
+    if (!parsedSwaggerSpec || !parsedSwaggerSpec.paths) {
       throw new Error("Invalid Swagger specification - no paths found");
     }
 
@@ -56,16 +56,16 @@ serve(async (req) => {
 
     // Extract API information for AI analysis
     const apiInfo = {
-      title: swaggerSpec.info?.title || 'API',
-      version: swaggerSpec.info?.version || '1.0',
-      description: swaggerSpec.info?.description || '',
-      baseUrl: config?.baseUrl || swaggerSpec.servers?.[0]?.url || 'https://api.example.com',
-      endpoints: Object.keys(swaggerSpec.paths).length,
+      title: parsedSwaggerSpec.info?.title || 'API',
+      version: parsedSwaggerSpec.info?.version || '1.0',
+      description: parsedSwaggerSpec.info?.description || '',
+      baseUrl: loadConfig?.baseUrl || parsedSwaggerSpec.servers?.[0]?.url || 'https://api.example.com',
+      endpoints: Object.keys(parsedSwaggerSpec.paths).length,
       methods: []
     };
 
     // Collect all HTTP methods and endpoints
-    Object.entries(swaggerSpec.paths).forEach(([path, pathItem]: [string, any]) => {
+    Object.entries(parsedSwaggerSpec.paths).forEach(([path, pathItem]: [string, any]) => {
       Object.entries(pathItem).forEach(([method, operation]: [string, any]) => {
         if (['get', 'post', 'put', 'delete', 'patch'].includes(method)) {
           apiInfo.methods.push({
@@ -144,13 +144,13 @@ ${additionalPrompt ? `### Additional Requirements:
 ${additionalPrompt}
 
 ` : ''}### Swagger/OpenAPI specification:
-${JSON.stringify(swaggerSpec, null, 2)}
+${JSON.stringify(parsedSwaggerSpec, null, 2)}
 
 ### Load Configuration:
-- Thread Count: ${config.threadCount}
-- Ramp-up Time: ${config.rampUpTime} seconds
-- Duration: ${config.duration} seconds
-- Loop Count: ${config.loopCount}`;
+- Thread Count: ${loadConfig.threadCount}
+- Ramp-up Time: ${loadConfig.rampUpTime} seconds
+- Duration: ${loadConfig.duration} seconds
+- Loop Count: ${loadConfig.loopCount}`;
 
     let jmeterXmlFromAI = "";
 
@@ -246,7 +246,7 @@ ${JSON.stringify(swaggerSpec, null, 2)}
     } else {
       console.log('Using fallback JMeter XML generation');
       // Fallback: generate basic JMeter XML locally
-      finalJmeterXml = generateJMeterXML(swaggerSpec, loadConfig, { 
+      finalJmeterXml = generateJMeterXML(parsedSwaggerSpec, loadConfig, { 
         scenarios: [{ name: "API Load Test", description: "Basic load test for all endpoints", priority: "high" }],
         bottlenecks: ["Response time", "Throughput", "Error rate"],
         assertions: [{ type: "responseTime", threshold: 5000 }, { type: "statusCode", values: [200, 201, 202, 204] }],
@@ -264,7 +264,7 @@ ${JSON.stringify(swaggerSpec, null, 2)}
         provider: aiProvider === 'google' ? 'Google AI Studio' : 'OpenAI',
         endpoints: apiInfo.methods.length,
         generatedByAI: jmeterXmlFromAI && jmeterXmlFromAI.includes('<jmeterTestPlan'),
-        testPlanName: config.testPlanName
+        testPlanName: loadConfig.testPlanName
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -296,7 +296,7 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
   });
 
   // Extract base URL info
-  const baseUrl = config.baseUrl || swaggerSpec.servers?.[0]?.url || 'https://api.example.com';
+  const baseUrl = loadConfig.baseUrl || swaggerSpec.servers?.[0]?.url || 'https://api.example.com';
   let urlParts;
   try {
     const url = new URL(baseUrl);
@@ -355,7 +355,7 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
         </elementProp>` : ''}
       </HTTPSamplerProxy>
       <hashTree>
-        ${config.addAssertions ? `
+        ${loadConfig.addAssertions ? `
         <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status Code Assertion" enabled="true">
           <collectionProp name="Asserion.test_strings">
             ${aiAnalysis.assertions?.find((a: any) => a.type === 'statusCode')?.values?.map((code: number) => 
@@ -371,7 +371,7 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
           <stringProp name="DurationAssertion.duration">${aiAnalysis.assertions?.find((a: any) => a.type === 'responseTime')?.threshold || 5000}</stringProp>
         </DurationAssertion>
         <hashTree/>` : ''}
-        ${config.addCorrelation && aiAnalysis.correlations?.length > 0 ? `
+        ${loadConfig.addCorrelation && aiAnalysis.correlations?.length > 0 ? `
         <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
           <stringProp name="JSONPostProcessor.referenceNames">${aiAnalysis.correlations[0]}</stringProp>
           <stringProp name="JSONPostProcessor.jsonPathExprs">$..${aiAnalysis.correlations[0]}</stringProp>
@@ -392,17 +392,17 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">${config.loopCount}</stringProp>
+          <stringProp name="LoopController.loops">${loadConfig.loopCount}</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">${config.threadCount}</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">${config.rampUpTime}</stringProp>
+        <stringProp name="ThreadGroup.num_threads">${loadConfig.threadCount}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${loadConfig.rampUpTime}</stringProp>
         <boolProp name="ThreadGroup.scheduler">true</boolProp>
-        <stringProp name="ThreadGroup.duration">${config.duration}</stringProp>
+        <stringProp name="ThreadGroup.duration">${loadConfig.duration}</stringProp>
         <stringProp name="ThreadGroup.delay"></stringProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
       </ThreadGroup>
       <hashTree>
-        ${config.addCsvConfig ? `
+        ${loadConfig.addCsvConfig ? `
         <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">
           <stringProp name="delimiter">,</stringProp>
           <stringProp name="fileEncoding">UTF-8</stringProp>
@@ -435,7 +435,7 @@ function generateJMeterXML(swaggerSpec: any, loadConfig: LoadConfig, aiAnalysis:
   return `<?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.4.1">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="${escapeXml(config.testPlanName)}" enabled="true">
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="${escapeXml(loadConfig.testPlanName)}" enabled="true">
       <stringProp name="TestPlan.comments">AI-Generated JMeter Test Plan - Created on ${new Date().toISOString()}</stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
@@ -609,7 +609,7 @@ function enhanceJMeterXML(aiGeneratedXml: string, loadConfig: LoadConfig): strin
   }
 
   // Check and enhance HTTP samplers to ensure they have proper body data
-  if (config.addCsvConfig && !enhancedXml.includes('CSVDataSet')) {
+  if (loadConfig.addCsvConfig && !enhancedXml.includes('CSVDataSet')) {
     console.log('Adding missing CSV Data Set Config');
     const csvConfig = `
         <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">
