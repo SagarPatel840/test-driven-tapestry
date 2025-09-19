@@ -1007,10 +1007,20 @@ ${rtfContent}
             <h2 className="text-2xl font-bold">JMX Generation Tools</h2>
           </div>
           
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[800px]">
-            {/* Swagger to JMX Section */}
-            <div className="space-y-6">
-              <Card className="h-full">
+          <Tabs value={activeJmxTab} onValueChange={setActiveJmxTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="swagger" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Swagger to JMX
+              </TabsTrigger>
+              <TabsTrigger value="har" className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                HAR to JMX
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="swagger" className="space-y-6">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
@@ -1100,12 +1110,7 @@ ${rtfContent}
                   </div>
 
                   <Button 
-                    onClick={() => {
-                      console.log('Generate JMeter Test Plan button clicked');
-                      console.log('Swagger content length:', swaggerContent.length);
-                      console.log('Base URL:', swaggerConfig.baseUrl);
-                      processSwagger();
-                    }} 
+                    onClick={processSwagger} 
                     disabled={!swaggerContent.trim() || !swaggerConfig.baseUrl.trim() || isSwaggerProcessing}
                     className="w-full"
                     size="lg"
@@ -1113,7 +1118,7 @@ ${rtfContent}
                     {isSwaggerProcessing ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Generating with AI...
+                        Processing with AI...
                       </>
                     ) : (
                       <>
@@ -1133,24 +1138,22 @@ ${rtfContent}
                     </div>
                   )}
 
-                  {swaggerJmeterXml && (
+                  {swaggerResult && (
                     <div className="pt-4 border-t space-y-3">
                       <div className="flex items-center gap-2 mb-3">
                         <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="font-medium">JMeter Test Plan Generated</span>
+                        <span className="font-medium">JMeter Script Generated</span>
                       </div>
-                      {swaggerResult && (
-                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                          <div>
-                            <div className="font-medium">Total Endpoints</div>
-                            <div className="text-lg font-bold text-primary">{swaggerResult.totalEndpoints}</div>
-                          </div>
-                          <div>
-                            <div className="font-medium">AI Provider</div>
-                            <div className="text-lg font-bold text-primary">{swaggerResult.aiProvider}</div>
-                          </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                        <div>
+                          <div className="font-medium">Total Endpoints</div>
+                          <div className="text-lg font-bold text-primary">{swaggerResult.totalEndpoints}</div>
                         </div>
-                      )}
+                        <div>
+                          <div className="font-medium">AI Provider</div>
+                          <div className="text-lg font-bold text-primary">{swaggerResult.aiProvider}</div>
+                        </div>
+                      </div>
                       <Button onClick={downloadSwaggerJMX} className="w-full" variant="outline">
                         <Download className="w-4 h-4 mr-2" />
                         Download JMX File
@@ -1159,23 +1162,22 @@ ${rtfContent}
                   )}
                 </CardContent>
               </Card>
-            </div>
+            </TabsContent>
 
-            {/* HAR to JMX Section */}
-            <div className="space-y-6">
-              <Card className="h-full">
+            <TabsContent value="har" className="space-y-6">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-primary" />
+                    <Upload className="h-5 w-5 text-blue-600" />
                     HAR to JMX
                   </CardTitle>
                   <CardDescription>
-                    Upload a HAR file to generate JMeter performance test scripts
+                    Upload your HAR file to generate JMeter test plans from recorded traffic
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="harFile">Upload HAR File</Label>
+                    <Label htmlFor="harFile">HAR File</Label>
                     <Input
                       id="harFile"
                       type="file"
@@ -1183,20 +1185,15 @@ ${rtfContent}
                       onChange={handleHarFileUpload}
                       className="cursor-pointer"
                     />
-                    {harFile && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Selected: {harFile.name}
-                      </p>
-                    )}
                   </div>
 
                   <div className="text-center text-muted-foreground">— OR —</div>
 
                   <div>
-                    <Label htmlFor="harContentPaste">Paste HAR JSON Content</Label>
+                    <Label htmlFor="harContent">Paste HAR Content</Label>
                     <Textarea
-                      id="harContentPaste"
-                      placeholder="Paste your HAR file JSON content here..."
+                      id="harContent"
+                      placeholder="Paste your HAR JSON content here..."
                       value={harContent}
                       onChange={(e) => setHarContent(e.target.value)}
                       rows={6}
@@ -1282,8 +1279,8 @@ ${rtfContent}
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="generate-report" className="space-y-6">

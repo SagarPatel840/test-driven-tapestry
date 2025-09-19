@@ -171,6 +171,17 @@ export const SwaggerTestGenerator = () => {
           </div>
 
           <div>
+            <Label htmlFor="swaggerContent">Or Paste Content</Label>
+            <Textarea
+              id="swaggerContent"
+              value={swaggerContent}
+              onChange={(e) => setSwaggerContent(e.target.value)}
+              placeholder="Paste your Swagger/OpenAPI specification here..."
+              className="min-h-[300px] font-mono text-sm"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="aiProvider">AI Provider</Label>
             <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
               <SelectTrigger>
@@ -191,17 +202,6 @@ export const SwaggerTestGenerator = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="swaggerContent">Or Paste Content</Label>
-            <Textarea
-              id="swaggerContent"
-              value={swaggerContent}
-              onChange={(e) => setSwaggerContent(e.target.value)}
-              placeholder="Paste your Swagger/OpenAPI specification here..."
-              className="min-h-[300px] font-mono text-sm"
-            />
           </div>
 
           <div>
