@@ -394,11 +394,29 @@ export const EnhancedPerformanceTestGenerator = () => {
       }, 500);
 
       console.log('Processing Swagger content with AI...');
-      const spec = swaggerContent.trim().startsWith('{') 
-        ? JSON.parse(swaggerContent) 
-        : yaml.load(swaggerContent) as any;
+      // Robustly parse Swagger (try JSON first, then YAML)
+      let spec: any;
+      try {
+        if (swaggerContent.trim().startsWith('{')) {
+          spec = JSON.parse(swaggerContent);
+        } else {
+          spec = yaml.load(swaggerContent) as any;
+        }
+      } catch (e) {
+        try {
+          // Fallback: try the other parser
+          spec = yaml.load(swaggerContent) as any;
+        } catch (e2) {
+          throw new Error('Invalid Swagger/OpenAPI format. Please verify your file contents.');
+        }
+      }
 
-      console.log('Parsed spec:', spec);
+      // Validate that we have paths before calling the Edge Function
+      if (!spec || !spec.paths || Object.keys(spec.paths).length === 0) {
+        throw new Error('Swagger/OpenAPI spec has no paths. Please provide a valid spec with endpoints.');
+      }
+
+      console.log('Parsed spec with paths:', Object.keys(spec.paths).length);
       console.log('Using AI provider:', aiProvider);
 
       // Prepare load config for the edge function
@@ -442,7 +460,7 @@ export const EnhancedPerformanceTestGenerator = () => {
       // Calculate total endpoints from the Swagger spec (matching AI processing logic)
       const totalEndpoints = Object.keys(spec.paths || {}).reduce((total, path) => {
         const pathMethods = Object.keys(spec.paths[path] || {}).filter(method => 
-          ['get', 'post', 'put', 'delete', 'patch'].includes(method)
+          ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(method)
         );
         return total + pathMethods.length;
       }, 0);
