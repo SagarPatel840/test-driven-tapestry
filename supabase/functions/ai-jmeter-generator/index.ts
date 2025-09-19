@@ -81,6 +81,9 @@ serve(async (req) => {
 
     console.log(`Found ${apiInfo.methods.length} API endpoints to analyze`);
 
+    // Build explicit endpoints list to enforce 1:1 sampler coverage
+    const endpointsList = apiInfo.methods.map((m: any) => `${m.method} ${m.path}`).join('\n');
+
     // Use the exact prompt provided by the user for Swagger JMX generation
     const jmxPrompt = `You are an expert in JMeter test plan generation.  
 Your task is to create a complete Apache JMeter (.jmx) file based on the provided Swagger (OpenAPI) specification.  
@@ -94,23 +97,31 @@ Your task is to create a complete Apache JMeter (.jmx) file based on the provide
 
 2. Create a JMeter Test Plan (.jmx) with the following:  
    - Thread Group with configurable threads, ramp-up, and loop count.  
-   - HTTP Request Samplers for every endpoint in Swagger.  
+   - HTTP Request Samplers for EVERY endpoint (one sampler per method+path).  
    - Group Samplers by API tag or path for better readability.  
-   - Add \`HTTP Header Manager\` with required headers such as \`Content-Type: application/json\`, \`Authorization\`, etc.  
-   - Add \`CSV Data Set Config\` to parameterize dynamic values like user IDs, emails, or tokens.  
-   - For request bodies, insert variables (e.g., \`\${variableName}\`) instead of hardcoded values.  
+   - Add `HTTP Header Manager` with required headers such as `Content-Type: application/json`, `Authorization`, etc.  
+   - Add `CSV Data Set Config` to parameterize dynamic values like user IDs, emails, or tokens.  
+   - For request bodies, insert variables (e.g., `${variableName}`) instead of hardcoded values.  
    - Add realistic sample test data for variables based on Swagger schema (strings, numbers, booleans, arrays).  
 
 3. Enhancements:  
    - Automatically handle path parameters with variables.  
    - Insert default test data where the Swagger schema does not provide examples.  
-   - Add \`JSON Extractor\` or \`Regular Expression Extractor\` for correlation of response values (e.g., auth token).  
+   - Add `JSON Extractor` or `Regular Expression Extractor` for correlation of response values (e.g., auth token).  
    - Ensure the JMX is well-formed XML and can be directly opened in JMeter without errors.  
+
+### STRICT COVERAGE CONSTRAINTS:
+- The number of HTTPSamplerProxy elements MUST equal ${apiInfo.methods.length}.
+- Create exactly ONE HTTPSamplerProxy per endpoint below. Do NOT group or combine endpoints.
+- Name each sampler as `METHOD PATH` exactly.
+
+### Endpoints to cover (${apiInfo.methods.length}):
+${endpointsList}
 
 ### Body Data Rules:  
 1. **Swagger-based JMX**  
    - For each request body defined in Swagger schemas:  
-     - Map schema fields to \`\${variableName}\` placeholders instead of hardcoded values.  
+     - Map schema fields to `${variableName}` placeholders instead of hardcoded values.  
      - Use CSV Data Set Config to supply values for those variables.  
      - If the schema has examples/defaults, use them as initial CSV values.  
      - Support JSON, XML, or form-data body formats depending on Swagger definition.  
@@ -118,9 +129,9 @@ Your task is to create a complete Apache JMeter (.jmx) file based on the provide
    Example for Swagger schema:  
    \`\`\`json
    {
-     "username": "\${username}",
-     "password": "\${password}",
-     "age": \${age}
+     "username": "${username}",
+     "password": "${password}",
+     "age": ${age}
    }
    \`\`\`
 
@@ -133,7 +144,7 @@ Your task is to create a complete Apache JMeter (.jmx) file based on the provide
 ### Output:  
 - Provide the final JMX file content as valid XML inside code block.  
 - Do not summarize, only return the JMX file.  
-- Ensure all nodes (\`TestPlan\`, \`ThreadGroup\`, \`HTTPSamplerProxy\`, etc.) follow correct JMeter XML structure.  
+- Ensure all nodes (`TestPlan`, `ThreadGroup`, `HTTPSamplerProxy`, etc.) follow correct JMeter XML structure.  
 
 ### Input:  
 Swagger/OpenAPI specification (YAML or JSON format) will be provided.  
@@ -152,6 +163,8 @@ ${JSON.stringify(parsedSwaggerSpec, null, 2)}
 - Ramp-up Time: ${loadConfig.rampUpTime} seconds
 - Duration: ${loadConfig.duration} seconds
 - Loop Count: ${loadConfig.loopCount}`;
+
+    let jmeterXmlFromAI = "";
 
     let jmeterXmlFromAI = "";
 
