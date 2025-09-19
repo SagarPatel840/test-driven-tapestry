@@ -184,13 +184,27 @@ ${JSON.stringify(parsedSwaggerSpec, null, 2)}
         
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
           const aiText = data.candidates[0].content.parts[0].text;
+          console.log('Google AI raw response length:', aiText.length);
+          
           // Extract XML content from code blocks if present
-          const xmlMatch = aiText.match(/```(?:xml)?\s*([\s\S]*?)\s*```/) || aiText.match(/<\?xml[\s\S]*<\/jmeterTestPlan>/);
+          const xmlMatch = aiText.match(/```(?:xml|jmx)?\s*([\s\S]*?)\s*```/) || 
+                          aiText.match(/<\?xml[\s\S]*?<\/jmeterTestPlan>/) ||
+                          aiText.match(/<jmeterTestPlan[\s\S]*?<\/jmeterTestPlan>/);
+          
           if (xmlMatch) {
             jmeterXmlFromAI = xmlMatch[1] || xmlMatch[0];
+            console.log('Extracted JMX from code block/XML pattern');
+          } else if (aiText.includes('<jmeterTestPlan') || aiText.includes('<?xml')) {
+            // If it contains JMeter XML tags but doesn't match patterns, use as-is
+            jmeterXmlFromAI = aiText;
+            console.log('Using full AI response as JMX (contains XML tags)');
           } else {
             jmeterXmlFromAI = aiText;
+            console.log('Using full AI response as JMX (fallback)');
           }
+          
+          console.log('Final JMX from AI length:', jmeterXmlFromAI.length);
+          console.log('JMX contains jmeterTestPlan tag:', jmeterXmlFromAI.includes('<jmeterTestPlan'));
         }
       } catch (error) {
         console.error('Google AI API call failed:', error);
@@ -240,12 +254,21 @@ ${JSON.stringify(parsedSwaggerSpec, null, 2)}
 
     // Use AI-generated JMeter XML if available, otherwise use fallback generation
     let finalJmeterXml: string;
+    const hasValidAIContent = jmeterXmlFromAI && 
+      (jmeterXmlFromAI.includes('<jmeterTestPlan') || jmeterXmlFromAI.includes('<?xml'));
     
-    if (jmeterXmlFromAI && jmeterXmlFromAI.includes('<jmeterTestPlan')) {
-      console.log('Using AI-generated JMeter XML');
+    console.log('AI content available:', !!jmeterXmlFromAI);
+    console.log('AI content length:', jmeterXmlFromAI?.length || 0);
+    console.log('Has valid JMX structure:', hasValidAIContent);
+    
+    if (hasValidAIContent) {
+      console.log('✅ Using AI-generated JMeter XML from', aiProvider);
       finalJmeterXml = enhanceJMeterXML(jmeterXmlFromAI, loadConfig);
     } else {
-      console.log('Using fallback JMeter XML generation');
+      console.log('❌ Using fallback JMeter XML generation - AI content invalid or empty');
+      if (jmeterXmlFromAI) {
+        console.log('AI response preview (first 200 chars):', jmeterXmlFromAI.substring(0, 200));
+      }
       // Fallback: generate basic JMeter XML locally
       finalJmeterXml = generateJMeterXML(parsedSwaggerSpec, loadConfig, { 
         scenarios: [{ name: "API Load Test", description: "Basic load test for all endpoints", priority: "high" }],
@@ -264,8 +287,10 @@ ${JSON.stringify(parsedSwaggerSpec, null, 2)}
       metadata: {
         provider: aiProvider === 'google' ? 'Google AI Studio' : 'OpenAI',
         endpoints: apiInfo.methods.length,
-        generatedByAI: jmeterXmlFromAI && jmeterXmlFromAI.includes('<jmeterTestPlan'),
-        testPlanName: loadConfig.testPlanName
+        generatedByAI: hasValidAIContent,
+        testPlanName: loadConfig.testPlanName,
+        aiUsed: !!jmeterXmlFromAI,
+        aiContentLength: jmeterXmlFromAI?.length || 0
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
