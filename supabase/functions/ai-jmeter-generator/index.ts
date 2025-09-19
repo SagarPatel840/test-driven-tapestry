@@ -32,6 +32,7 @@ serve(async (req) => {
     console.log('Processing Swagger spec with AI-powered JMeter generation...');
     console.log('AI Provider:', aiProvider);
     console.log('Load Config:', loadConfig);
+    console.log('Additional Prompt Length:', additionalPrompt?.length || 0);
 
     // Parse swagger content if it's a string
     let parsedSwaggerSpec;
@@ -174,8 +175,8 @@ ${JSON.stringify(parsedSwaggerSpec, null, 2)}
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Google AI API error:', errorText);
-          throw new Error(`Google AI API error: ${response.statusText}`);
+          console.error('Google AI API error:', response.status, errorText);
+          throw new Error(`Google AI API error (${response.status}): ${response.statusText} - ${errorText}`);
         }
 
         const data = await response.json();
@@ -216,8 +217,8 @@ ${JSON.stringify(parsedSwaggerSpec, null, 2)}
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('OpenAI API error:', errorText);
-          throw new Error(`OpenAI API error: ${response.statusText}`);
+          console.error('OpenAI API error:', response.status, errorText);
+          throw new Error(`OpenAI API error (${response.status}): ${response.statusText} - ${errorText}`);
         }
 
         const data = await response.json();

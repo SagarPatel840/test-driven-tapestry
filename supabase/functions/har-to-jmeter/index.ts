@@ -48,7 +48,9 @@ serve(async (req) => {
   try {
     const { harContent, loadConfig, testPlanName = "HAR Performance Test", aiProvider = 'openai', additionalPrompt = '' } = await req.json();
     
-    console.log('Processing HAR file with OpenAI...');
+    console.log('Processing HAR file with AI...');
+    console.log('AI Provider:', aiProvider);
+    console.log('Additional Prompt Length:', additionalPrompt?.length || 0);
     
     // Parse HAR content
     const harData: HarFile = typeof harContent === 'string' ? JSON.parse(harContent) : harContent;
@@ -173,7 +175,7 @@ ${JSON.stringify(harData, null, 2)}`;
     try {
       if (!jmxGenerationResponse.ok) {
         const errorText = await jmxGenerationResponse.text();
-        console.error(`${providerUsed} API error:`, errorText);
+        console.error(`${providerUsed} API error:`, jmxGenerationResponse.status, errorText);
 
         // Fallback: if OpenAI failed and Google key exists, try Google
         if (providerUsed !== 'google') {
@@ -235,7 +237,12 @@ ${JSON.stringify(harData, null, 2)}`;
     }
 
     // Validate that we got valid JMX content
-    if (!jmxContent || !jmxContent.includes('<jmeterTestPlan')) {
+    if (!jmxContent || jmxContent.trim().length === 0) {
+      throw new Error('AI response was empty or invalid');
+    }
+    
+    if (!jmxContent.includes('<jmeterTestPlan')) {
+      console.error('Invalid JMX content received:', jmxContent.substring(0, 500));
       throw new Error('AI did not generate valid JMeter XML content');
     }
 
